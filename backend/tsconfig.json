@@ -7,9 +7,10 @@
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
+    "module": "esnext",
     "target": "esnext",
     "types": [],
+    "moduleResolution": "node",
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -19,11 +20,12 @@
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-
+    "allowSyntheticDefaultImports": true,
     // Style Options
     // "noImplicitReturns": true,
     // "noImplicitOverride": true,
@@ -35,7 +37,7 @@
     // Recommended Options
     "strict": true,
     "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",

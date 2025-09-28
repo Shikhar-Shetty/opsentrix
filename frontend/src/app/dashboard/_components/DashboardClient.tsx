@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useState, useCallback } from "react"
 import { createAgent } from "../../../../actions/agent"
+import { RelativeTime } from "./RelativeTime"
 
 export type Agent = {
   id: string
@@ -14,18 +15,6 @@ export type Agent = {
   memory: number
   disk: number
   processes: number
-}
-
-const formatRelative = (d: Date) => {
-  const diff = Math.max(0, Date.now() - d.getTime())
-  const sec = Math.floor(diff / 1000)
-  if (sec < 10) return "just now"
-  if (sec < 60) return `${sec}s ago`
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min}m ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}h ago`
-  return `${Math.floor(hr / 24)}d ago`
 }
 
 const StatusBadge = ({ status }: { status: string }) => (
@@ -115,7 +104,7 @@ export default function DashboardClient({ initialAgents }: Props) {
                     </div>
                   </td>
                   <td><StatusBadge status={a.status} /></td>
-                  <td className="text-sm">{formatRelative(a.lastHeartbeat)}</td>
+                  <td className="text-sm"><RelativeTime date={a.lastHeartbeat} /></td>
                   <td><ProgressBar value={a.CPU} label="CPU" /></td>
                   <td><ProgressBar value={a.memory} label="Mem" /></td>
                   <td><ProgressBar value={a.disk} label="Disk" /></td>
