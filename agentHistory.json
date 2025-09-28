@@ -1,0 +1,28 @@
+[
+  {
+    "id": "agt_alpha",
+    "name": "alpha",
+    "token": "tok_123456abcdef",
+    "status": "online",
+    "lastHeartbeat": "2025-09-28T06:15:23.000Z",
+    "processes": 187,
+    "CPU": 24.5,
+    "memory": 57.2,
+    "disk": 72.0,
+    "userId": "user_123",
+    "createdAt": "2025-09-27T10:00:00.000Z"
+  },
+  {
+    "id": "agt_bravo",
+    "name": "bravo",
+    "token": "tok_abcdef123456",
+    "status": "offline",
+    "lastHeartbeat": "2025-09-28T04:00:00.000Z",
+    "processes": 0,
+    "CPU": 0.0,
+    "memory": 0.0,
+    "disk": 0.0,
+    "userId": "user_123",
+    "createdAt": "2025-09-27T11:30:00.000Z"
+  }
+]
