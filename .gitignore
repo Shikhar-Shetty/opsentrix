@@ -17,6 +17,11 @@
 /.next/
 /out/
 
+backend/generated
+frontend/generated
+backend/node_modules
+
+/generated
 # production
 /build
 
