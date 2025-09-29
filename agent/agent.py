@@ -10,8 +10,8 @@ AGENT_NAME = os.getenv("AGENT_NAME", socket.gethostname())
 
 def get_metrics():
     return {    
-        "id": "agt_e8e303dab35c",
-        "token": "tok_0f4eccb2145f732c46e27249",
+        "id": AGENT_NAME,
+        "token": AGENT_TOKEN,
         "status": "online",
         "cpu": psutil.cpu_percent(interval=0),
         "memory": psutil.virtual_memory().percent,
