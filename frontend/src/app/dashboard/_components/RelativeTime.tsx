@@ -5,7 +5,7 @@ export const RelativeTime = ({ date }: { date: string | Date }) => {
   const [text, setText] = useState("")
 
   useEffect(() => {
-    const d = new Date(date) // ensure it's a Date object
+    const d = new Date(date) 
     const update = () => {
       const diff = Math.max(0, Date.now() - d.getTime())
       const sec = Math.floor(diff / 1000)

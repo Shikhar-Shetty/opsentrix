@@ -17,6 +17,8 @@
 /.next/
 /out/
 
+agent/venv
+
 backend/generated
 frontend/generated
 backend/node_modules
