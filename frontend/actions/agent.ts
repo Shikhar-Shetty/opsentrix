@@ -33,6 +33,7 @@ export async function getAgent(id: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("User not authenticated");
   const agent = await prisma.agent.findUnique({ where: { id } })
+  console.log(agent);
   return agent;
 }
 
@@ -40,7 +41,7 @@ export async function deleteAgent(id: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("User not authenticated");
   const agent = await prisma.agent.delete({
-    where: { id }
-  })
+    where: { id, userId }
+  });
   return agent;
 }
