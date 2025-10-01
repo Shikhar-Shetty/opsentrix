@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getAgent } from "../../../../actions/agent"
 import AgentMetricsCharts from "./_components/AgentMetricsChart"
+import AgentDeleteButton from "./_components/DeleteAgent"
 
 export default async function AgentDetailPage({ params }: { params: { id: string } }) {
   const agent = await getAgent(params.id)
@@ -67,7 +68,11 @@ export default async function AgentDetailPage({ params }: { params: { id: string
 
         <div className="card bg-base-200 mt-6">
           <div className="card-body">
-            <h2 className="card-title">Agent Information</h2>
+            <div className="flex justify-between">
+              <h2 className="card-title">Agent Information</h2>
+              <AgentDeleteButton agentId={agent.id} />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
                 <p className="text-sm opacity-70">Agent ID</p>
