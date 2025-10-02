@@ -27,31 +27,31 @@ type Agent = {
 }
 
 const COLORS = {
-  cpu: "#1eb854", 
-  memory: "#f59e0b", 
-  disk: "#3b82f6", 
+  cpu: "#1eb854",
+  memory: "#f59e0b",
+  disk: "#3b82f6",
   cpuUsed: "#10b981",
-  cpuAvailable: "#d1fae5", 
-  memoryUsed: "#f59e0b", 
-  memoryAvailable: "#fef3c7", 
-  diskUsed: "#3b82f6", 
-  diskAvailable: "#dbeafe", 
+  cpuAvailable: "#d1fae5",
+  memoryUsed: "#f59e0b",
+  memoryAvailable: "#fef3c7",
+  diskUsed: "#3b82f6",
+  diskAvailable: "#dbeafe",
 }
 
 export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
   const historicalData = Array.from({ length: 24 }, (_, i) => ({
     hour: `${i}:00`,
-    cpu: Math.max(0, agent.CPU + (Math.random() - 0.5) * 20),
-    memory: Math.max(0, agent.memory + (Math.random() - 0.5) * 15),
-    disk: Math.max(0, agent.disk + (Math.random() - 0.5) * 10),
+    cpu: Math.max(0, (agent.CPU || 0) + (Math.random() - 0.5) * 20),
+    memory: Math.max(0, (agent.memory || 0) + (Math.random() - 0.5) * 15),
+    disk: Math.max(0, (agent.disk || 0) + (Math.random() - 0.5) * 10),
   }))
 
   const currentMetrics = [
-    { name: "CPU", value: agent.CPU, color: COLORS.cpu },
-    { name: "Memory", value: agent.memory, color: COLORS.memory },
-    { name: "Disk", value: agent.disk, color: COLORS.disk },
+    { name: "CPU", value: agent.CPU || 0, color: COLORS.cpu },
+    { name: "Memory", value: agent.memory || 0, color: COLORS.memory },
+    { name: "Disk", value: agent.disk || 0, color: COLORS.disk },
   ]
-  
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="card bg-base-200 shadow-xl">
@@ -201,8 +201,8 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
                     borderRadius: "0.5rem",
                     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                   }}
-                  labelStyle={{ color: "#a0a0a0ff" }}  
-                  itemStyle={{ color: "#a0a0a0ff" }}       
+                  labelStyle={{ color: "#a0a0a0ff" }}
+                  itemStyle={{ color: "#a0a0a0ff" }}
                   formatter={(value: number) => `${value.toFixed(2)}%`}
                 />
 

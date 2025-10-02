@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { createAgent } from "../../../../actions/agent"
 import { RelativeTime } from "./RelativeTime"
+import { socket } from "@/components/socket"
 
 export type Agent = {
   id: string
@@ -37,7 +38,7 @@ const TokenCell = ({ token }: { token?: string }) => {
     if (token)
       try {
         await navigator.clipboard.writeText(token)
-      } catch { }
+      } catch {}
   }
   return (
     <div className="flex items-center gap-2">
@@ -57,7 +58,7 @@ const DockerCommandCell = ({ token, id }: { token: string; id: string }) => {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(dockerCmd)
-    } catch { }
+    } catch {}
   }
   return (
     <div className="mt-4">
@@ -91,6 +92,32 @@ export default function DashboardClient({ initialAgents }: Props) {
   const [creatingToken, setCreatingToken] = useState<string | null>(null)
   const [creatingAgentName, setCreatingAgentName] = useState<string>("")
   const [creatingAgentId, setCreatingAgentId] = useState<string>("")
+
+  // ---------------- SOCKET LOGIC ----------------
+  useEffect(() => {
+    socket.connect()
+
+    socket.on("connect", () => {
+      console.log("Connected to backend via socket.io")
+    })
+
+    socket.on("agent_update", (data: Agent) => {
+      console.log("Received agent update:", data)
+      setAgents((prev) => {
+        const exists = prev.find((a) => a.id === data.id)
+        if (exists) {
+          return prev.map((a) => (a.id === data.id ? { ...a, ...data } : a))
+        }
+        return [...prev, data]
+      })
+    })
+
+    return () => {
+      socket.off("agent_update")
+      socket.off("connect")
+      socket.disconnect()
+    }
+  }, [])
 
   const generateToken = () =>
     "tok_" + crypto.getRandomValues(new Uint8Array(12)).reduce((s, b) => s + b.toString(16).padStart(2, "0"), "")
@@ -239,7 +266,7 @@ export default function DashboardClient({ initialAgents }: Props) {
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(creatingToken)
-                    } catch { }
+                    } catch {}
                   }}
                 >
                   Copy
