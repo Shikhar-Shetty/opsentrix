@@ -10,6 +10,10 @@ export const metricAgent = async (req: Request, res: Response) => {
     if (!agent) return res.status(404).json({ error: "No Agent Found. Try Again" });
     if (agent.token !== agentData.token) return res.status(403).json({ error: "Invalid Token" });
 
+    let newSummary: string = `\n${new Date().toISOString()}: Memory: ${agentData.memory}%, Disk: ${agentData.disk}%, CPU: ${agentData.CPU}%, Processes: ${agentData.processes}, Status: ${agentData.status}`;
+    let summary: string = (agent.summary ?? '') + newSummary;
+    console.log("Summary:", summary);
+    
     const updatedAgent = await prisma.agent.update({
       where: { id: agentData.id }, 
       data: {
@@ -18,7 +22,8 @@ export const metricAgent = async (req: Request, res: Response) => {
         CPU: agentData.CPU,
         lastHeartbeat: new Date(), 
         status: agentData.status,
-        processes: agentData.processes
+        processes: agentData.processes,
+        summary: summary
       },
     });
 

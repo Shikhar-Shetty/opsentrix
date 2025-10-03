@@ -18,5 +18,6 @@ model Agent {
   memory        Float    @default(0.0)
   disk          Float    @default(0.0)
   userId        String
+  summary       String
   createdAt     DateTime @default(now())
 }

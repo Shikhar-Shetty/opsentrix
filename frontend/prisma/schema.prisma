@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -9,15 +8,16 @@ datasource db {
 }
 
 model Agent {
-  id String @unique @id
-  name String
-  token String
-  status String @default("offline")
+  id            String   @id @unique
+  name          String
+  token         String
+  status        String   @default("offline")
   lastHeartbeat DateTime @default(now())
-  processes Int @default(0)
-  CPU Float @default(0.0)
-  memory Float  @default(0.0)
-  disk  Float @default(0.0)
-  userId  String 
-  createdAt DateTime @default(now())
+  processes     Int      @default(0)
+  CPU           Float    @default(0.0)
+  memory        Float    @default(0.0)
+  disk          Float    @default(0.0)
+  userId        String
+  summary       String
+  createdAt     DateTime @default(now())
 }

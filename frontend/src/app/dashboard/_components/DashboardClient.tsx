@@ -16,6 +16,7 @@ export type Agent = {
   memory: number
   disk: number
   processes: number
+  summary: string
 }
 
 const StatusBadge = ({ status }: { status: string }) => (

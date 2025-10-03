@@ -5,6 +5,7 @@ import Link from "next/link"
 import { socket } from "@/components/socket"
 import AgentMetricsCharts from "./AgentMetricsChart"
 import AgentDeleteButton from "./DeleteAgent"
+import { AlertCircle, AlertTriangle, CheckCircle } from "lucide-react"
 
 export interface Agent {
   id: string
@@ -18,10 +19,52 @@ export interface Agent {
   processes: number
 }
 
-export default function AgentDetailClient({ Agent }:{Agent: Agent | null}) {
+type RiskLevel = "none" | "medium" | "high"
+
+const getRisk = (agent: Agent): { level: RiskLevel; message: string } => {
+  if (agent.CPU >= 90 || agent.disk >= 90 || agent.memory >= 95 || agent.processes >= 800) {
+    if (agent.CPU >= 90) return { level: "high", message: "High CPU usage" }
+    if (agent.disk >= 90) return { level: "high", message: "High disk usage" }
+    if (agent.memory >= 95) return { level: "high", message: "High memory usage" }
+    return { level: "high", message: "System under heavy load" }
+  }
+
+  if (agent.CPU >= 75 || agent.disk >= 80 || agent.memory >= 85 || agent.processes >= 500) {
+    if (agent.CPU >= 75) return { level: "medium", message: "Elevated CPU usage" }
+    if (agent.disk >= 80) return { level: "medium", message: "Elevated disk usage" }
+    if (agent.memory >= 85) return { level: "medium", message: "Elevated memory usage" }
+    return { level: "medium", message: "System load is elevated" }
+  }
+
+  return { level: "none", message: "No risk detected" }
+}
+
+const AgentStatusBadge = ({ agent }: { agent: Agent }) => {
+  const risk = getRisk(agent)
+  let colorClass = "bg-green-600/60 text-green-200 text-sm" 
+  let Icon = CheckCircle
+
+  if (risk.level === "medium") {
+    colorClass = "bg-yellow-600/60 text-yellow-200 text-sm"
+    Icon = AlertTriangle
+  } else if (risk.level === "high") {
+    colorClass = "bg-red-700/60 text-red-200 text-sm"
+    Icon = AlertCircle
+  }
+
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1 rounded-lg font-medium ${colorClass}`}>
+      <Icon className="w-4 h-4" />
+      <span>{risk.message}</span>
+    </div>
+  )
+}
+
+export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
   const [agent, setAgent] = useState<Agent | null>(Agent)
   const [notFound, setNotFound] = useState(false)
-  const agentId = Agent?.id;
+  const agentId = Agent?.id
+
   useEffect(() => {
     socket.connect()
     socket.emit("get_agent", agentId)
@@ -34,15 +77,11 @@ export default function AgentDetailClient({ Agent }:{Agent: Agent | null}) {
     })
 
     socket.on("agent_update", (data: Agent) => {
-      if (data.id === agentId) {
-        setAgent(data)
-      }
+      if (data.id === agentId) setAgent(data)
     })
 
     socket.on("agent_not_found", (id: string) => {
-      if (id === agentId) {
-        setNotFound(true)
-      }
+      if (id === agentId) setNotFound(true)
     })
 
     return () => {
@@ -87,12 +126,18 @@ export default function AgentDetailClient({ Agent }:{Agent: Agent | null}) {
               <h1 className="text-3xl font-bold">{agent.name}</h1>
               <p className="text-sm opacity-70 mt-1">{agent.id}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm opacity-70">Status:</span>
-              <div className={`badge ${agent.status === "online" ? "badge-success" : "badge-error"} gap-2`}>
-                <span className="inline-block h-2 w-2 rounded-full bg-white" />
-                {agent.status}
+
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm opacity-70">Status:</span>
+                <div
+                  className={`badge ${agent.status === "online" ? "badge-success" : "badge-error"} gap-2`}
+                >
+                  <span className="inline-block h-2 w-2 rounded-full bg-white" />
+                  {agent.status}
+                </div>
               </div>
+              <AgentStatusBadge agent={agent} />
             </div>
           </div>
         </div>
