@@ -10,7 +10,7 @@ export interface Agent {
   id: string
   name: string
   token?: string
-  status: "online" | "offline"
+  status: string
   lastHeartbeat: Date
   CPU: number
   memory: number
@@ -18,10 +18,10 @@ export interface Agent {
   processes: number
 }
 
-export default function AgentDetailClient({ agentId }: { agentId: string }) {
-  const [agent, setAgent] = useState<Agent | null>(null)
+export default function AgentDetailClient({ Agent }:{Agent: Agent | null}) {
+  const [agent, setAgent] = useState<Agent | null>(Agent)
   const [notFound, setNotFound] = useState(false)
-
+  const agentId = Agent?.id;
   useEffect(() => {
     socket.connect()
     socket.emit("get_agent", agentId)

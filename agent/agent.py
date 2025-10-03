@@ -24,7 +24,7 @@ def get_metrics():
         "id": AGENT_NAME,
         "token": AGENT_TOKEN,
         "status": "online",
-        "cpu": psutil.cpu_percent(interval=None), 
+        "CPU": psutil.cpu_percent(interval=None), 
         "memory": psutil.virtual_memory().percent,
         "disk": psutil.disk_usage('/').percent,
         "processes": len(psutil.pids()),
