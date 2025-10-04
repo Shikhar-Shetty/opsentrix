@@ -11,10 +11,11 @@
     "dev": "nodemon --watch \"src/**/*.ts\" --exec \"ts-node src/index.ts\""
   },
   "dependencies": {
+    "@google/genai": "^1.22.0",
     "@prisma/client": "^6.16.3",
     "axios": "^1.12.2",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "node-cron": "^4.2.1",
     "socket.io": "^4.8.1"
