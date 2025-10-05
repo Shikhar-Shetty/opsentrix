@@ -16,7 +16,7 @@ export async function createAgent(data: AgentData) {
     data: {
       ...data,
       userId,
-      summary: ""
+      summary: "",
     },
   });
   console.log(newAgent);

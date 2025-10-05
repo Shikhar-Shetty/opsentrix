@@ -5,38 +5,67 @@ import "dotenv/config";
 
 const ai = new GoogleGenAI({apiKey : process.env.GEMINI_API_KEY!});
 
-export const AIInsights = async (summary: string) => {
+export const AIInsights = async (req: Request, res: Response) => {
+  try {
+    const agentId = req.body.id;
+    if (!agentId) return res.status(400).json({ error: "Agent ID missing" });
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } });
 
-  const today = new Date().toISOString().split("T")[0];
-  const prompt = `
-    You are a professional system analyst. I am providing a summary of CPU, Memory, Disk, and Process metrics with timestamps. 
-    Your task is to generate a **concise, professional paragraph summarizing insights for ${today} only**, focusing on:
+    if (!agent) return res.status(404).json({ error: "No Agent Found. Try Again" });
 
-    - Key trends (rises/drops in CPU, memory, disk usage, processes)  
-    - Status changes (online/offline events)  
-    - Any anomalies or unusual patterns  
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
 
-    Do NOT include: past days, explanations about the format, filler words like "yes" or "no", or general commentary. Only professional insights.  
+    const todayStr = today.toISOString().split("T")[0];
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-    Metrics data:
+    if (agent.insightDate && agent.insightDate.toISOString().split("T")[0] === yesterdayStr) {
+      console.log(`Insights for ${yesterdayStr} already exist. Skipping generation.`);
+      return res.status(200).json({ message: "Already generated for yesterday." });
+    }
 
-    ${summary}
+    const prompt = `
+      You are a professional system analyst. I am providing a summary of CPU, Memory, Disk, and Process metrics with timestamps. 
+      Your task is to generate a **concise, professional paragraph summarizing insights for the day before this day: ${todayStr} only**, focusing on:
 
-    Output format:
+      - Key trends (rises/drops in CPU, memory, disk usage, processes)
+      - Status changes (online/offline events)
+      - Any anomalies or unusual patterns
 
-    ${today}: [Concise paragraph summarizing insights, highlighting hikes or drops at specific times, and noting status changes]
+      Do NOT include: today's or day before yesterday's insights, explanations about the format, filler words like "yes" or "no", or general commentary.
 
-    Ensure the paragraph is clear, specific, and actionable. Keep it professional and precise.
-  `;
+      Metrics data:
+      ${agent.summary}
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt
-  })
+      Output format:
+      ${yesterdayStr}: [Compose a concise, professional paragraph that highlights notable changes and insights in system performance, using numerical data (percentages, quantities, etc.) where relevant. Avoid repeating the date or any framing phrases—focus purely on a clear, analytical summary in natural English.]
+    `;
 
-  console.log(response.text)
-  return response.text;
-}; 
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt
+    });
+
+    const text = response?.text?.trim();
+    if (!text) return res.status(400).json({ error: "AI returned no content" });
+
+    const updatedAgent = await prisma.agent.update({
+      where: { id: agent.id },
+      data: {
+        dailyinsights: text,
+        insightDate: new Date(yesterdayStr as string),
+      },
+    });
+
+    console.log(`[AI] Generated insights for ${yesterdayStr} → ${agent.id}:`, updatedAgent);
+    return res.json(updatedAgent);
+
+  } catch (error) {
+    console.error("[AIInsights Error]", error);
+    return res.status(500).json({ error: "Failed to generate insights" });
+  }
+};
 
 export const metricAgent = async (req: Request, res: Response) => {
   const agentData = req.body;
@@ -71,4 +100,3 @@ export const metricAgent = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
-

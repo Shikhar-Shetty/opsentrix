@@ -5,8 +5,8 @@ import socketio
 
 sio = socketio.Client()
 
-AGENT_NAME = os.getenv("AGENT_NAME", "agt_1cd46902418f")
-AGENT_TOKEN = os.getenv("AGENT_TOKEN", "tok_8ed7f028a0ecb1b138067402")
+AGENT_NAME = os.getenv("AGENT_NAME", "agt_16f5bfe3686f")
+AGENT_TOKEN = os.getenv("AGENT_TOKEN", "tok_fa85baf2eeed97af44c71fe9")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:4000") 
 
 @sio.event

@@ -19,5 +19,7 @@ model Agent {
   disk          Float    @default(0.0)
   userId        String
   summary       String
+  dailyinsights String?
+  insightDate   DateTime?
   createdAt     DateTime @default(now())
 }

@@ -8,16 +8,18 @@ datasource db {
 }
 
 model Agent {
-  id            String   @id @unique
+  id            String    @id @unique
   name          String
   token         String
-  status        String   @default("offline")
-  lastHeartbeat DateTime @default(now())
-  processes     Int      @default(0)
-  CPU           Float    @default(0.0)
-  memory        Float    @default(0.0)
-  disk          Float    @default(0.0)
+  status        String    @default("offline")
+  lastHeartbeat DateTime  @default(now())
+  processes     Int       @default(0)
+  CPU           Float     @default(0.0)
+  memory        Float     @default(0.0)
+  disk          Float     @default(0.0)
   userId        String
+  createdAt     DateTime  @default(now())
   summary       String
-  createdAt     DateTime @default(now())
+  dailyinsights String?
+  insightDate   DateTime?
 }

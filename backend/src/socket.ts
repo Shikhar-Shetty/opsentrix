@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import axios from "axios";
+import "dotenv/config";
 
 export const agentLatestMetrics: Record<string, any> = {};
 export const agentLastHeartbeat: Record<string, number> = {};
@@ -29,7 +30,9 @@ export function initSocket(io: Server) {
 
       if (!socket.data.firstStored) {
         try {
-          await axios.post("http://localhost:4000/telemetry", data);
+          await axios.post(`${process.env.BASE_URL}/telemetry`, data);
+          await axios.post(`${process.env.BASE_URL}/telemetry/insights`, {id: data.id});
+          
           console.log(`[Immediate] Stored first metrics for agent ${data.id}`);
           socket.data.firstStored = true;
         } catch (err: any) {
@@ -40,11 +43,10 @@ export function initSocket(io: Server) {
 
     socket.on("disconnect", async () => {
       console.log("Socket disconnected");
-
       const agentId = socket.data.agentId;
       if (agentId && agentLatestMetrics[agentId]) {
         try {
-          await axios.post("http://localhost:4000/telemetry", {
+          await axios.post(`${process.env.BASE_URL}/telemetry`, {
             ...agentLatestMetrics[agentId],
             status: "offline",
             lastHeartbeat: new Date().toISOString(),
@@ -67,7 +69,7 @@ export function initSocket(io: Server) {
         if (!lastMetrics) continue;
         console.log(`[Timeout] Agent ${agentId} missed heartbeat, storing last metrics`);
         try {
-          await axios.post("http://localhost:4000/telemetry", {
+          await axios.post(`${process.env.BASE_URL}/telemetry`, {
             ...lastMetrics,
             status: "offline",
             lastHeartbeat: new Date().toISOString(),
@@ -76,10 +78,10 @@ export function initSocket(io: Server) {
         } catch (err: any) {
           console.error(`[Timeout] Failed to store metrics for ${agentId}:`, err.message);
         }
-
         delete agentLatestMetrics[agentId];
         delete agentLastHeartbeat[agentId];
       }
     }
   }, 5000);
 }
+

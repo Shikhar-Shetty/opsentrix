@@ -17,6 +17,8 @@ export type Agent = {
   disk: number
   processes: number
   summary: string
+  dailyinsights: string
+  insightDate: Date
 }
 
 const StatusBadge = ({ status }: { status: string }) => (
@@ -94,7 +96,6 @@ export default function DashboardClient({ initialAgents }: Props) {
   const [creatingAgentName, setCreatingAgentName] = useState<string>("")
   const [creatingAgentId, setCreatingAgentId] = useState<string>("")
 
-  // ---------------- SOCKET LOGIC ----------------
   useEffect(() => {
     socket.connect()
 

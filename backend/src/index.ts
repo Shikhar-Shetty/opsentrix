@@ -1,18 +1,18 @@
 import express from "express";
 import cors from "cors";
-import telemetryRouter from "./routes/agent.ts";
+import telemetryRouter from "./routes/agentRouter.ts";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import cron from "node-cron";
 import axios from "axios";
 import { initSocket, agentLatestMetrics } from "./socket.ts";
+import "dotenv/config";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 const server = createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
-
 initSocket(io);
 
 app.use(cors());
@@ -24,7 +24,7 @@ cron.schedule("0 */2 * * *", async () => {
   for (const agentId in agentLatestMetrics) {
     const metrics = agentLatestMetrics[agentId];
     try {
-      await axios.post("http://localhost:4000/telemetry", metrics);
+      await axios.post(`${process.env.BASE_URL}/telemetry`, metrics);
       console.log(`[Cron] Stored metrics for agent: ${agentId}`);
     } catch (err) {
       console.error(`[Cron] Failed to store metrics for ${agentId}:`, err);

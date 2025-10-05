@@ -17,6 +17,8 @@ export interface Agent {
   memory: number
   disk: number
   processes: number
+  dailyinsights: string
+  insightDate: Date
 }
 
 type RiskLevel = "none" | "medium" | "high"
