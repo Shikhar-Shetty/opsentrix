@@ -17,8 +17,8 @@ export interface Agent {
   memory: number
   disk: number
   processes: number
-  dailyinsights: string
-  insightDate: Date
+  dailyinsights: string | null
+  insightDate: Date | null
 }
 
 type RiskLevel = "none" | "medium" | "high"
@@ -134,14 +134,31 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
 
     socket.on("agent_data", (data: Agent) => {
       if (data.id === agentId) {
-        setAgent(data)
+        setAgent((prev) => ({
+          ...prev,
+          ...data,
+          dailyinsights: data.dailyinsights ?? prev?.dailyinsights ?? null,
+          insightDate: data.insightDate ?? prev?.insightDate ?? null,
+        }))
         setNotFound(false)
       }
     })
+    
 
     socket.on("agent_update", (data: Agent) => {
-      if (data.id === agentId) setAgent(data)
+      if (data.id === agentId) {
+        setAgent((prev) => {
+          if (!prev) return data
+          return {
+            ...prev,
+            ...data,
+            dailyinsights: data.dailyinsights ?? prev.dailyinsights,
+            insightDate: data.insightDate ?? prev.insightDate,
+          }
+        })
+      }
     })
+    
 
     socket.on("agent_not_found", (id: string) => {
       if (id === agentId) setNotFound(true)
@@ -224,7 +241,7 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
                   )}
                   <div className="divider my-2"></div>
                   <div className="pr-2">
-                    <MarkdownRenderer content={agent.dailyinsights} />
+                    <MarkdownRenderer content={agent.dailyinsights ?? "Error fetching AI Insights"} />
                   </div>
                 </div>
               </div>
