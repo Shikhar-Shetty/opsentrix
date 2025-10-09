@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import axios from "axios"
 import { socket } from "@/components/socket"
 import AgentMetricsCharts from "./AgentMetricsChart"
 import AgentDeleteButton from "./DeleteAgent"
-import { AlertCircle, AlertTriangle, CheckCircle, Sparkles } from "lucide-react"
+import { AlertCircle, AlertTriangle, CheckCircle, Sparkles, Settings, Trash2, Info } from "lucide-react"
+import { toast } from "sonner";
 
 export interface Agent {
   id: string
@@ -126,7 +128,55 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
 export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
   const [agent, setAgent] = useState<Agent | null>(Agent)
   const [notFound, setNotFound] = useState(false)
+  const [isCleaningCache, setIsCleaningCache] = useState(false)
   const agentId = Agent?.id
+
+  interface FolderCleanupData {
+    before: number;
+    after: number;
+    freed: number;
+  }
+  
+  interface CleanupResponse {
+    status: string;
+    freed: Record<string, FolderCleanupData> & { total: number };
+  }
+  
+  const handleCacheCleanup = async () => {
+    if (!agent) return;
+    
+    setIsCleaningCache(true);
+    
+    try {
+      const { data } = await axios.post<CleanupResponse>(
+        `http://localhost:4000/telemetry/clean-up`, 
+        { agentId }
+      );
+      
+      if (data.status === "success" && data.freed) {
+        const freedData = data.freed;
+        const totalFreed = freedData.total ?? 0;
+        
+        const folderDescription = Object.entries(freedData)
+          .filter(([key]) => key !== "total")
+          .map(([folder, val]) => {
+            const freed = (val as FolderCleanupData).freed;
+            return `${folder}: ${freed} MB`;
+          })
+          .join(", ");
+        
+        toast.success(`Cleanup complete! Freed ${totalFreed} MB`);
+      } else {
+        toast.error("Cleanup returned no data");
+      }
+      
+    } catch (error) {
+      console.error("Failed to initiate cache cleanup:", error);
+      toast.error("Failed to initiate cache cleanup");
+    } finally {
+      setIsCleaningCache(false);
+    }
+  };
 
   useEffect(() => {
     socket.connect()
@@ -143,7 +193,6 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
         setNotFound(false)
       }
     })
-    
 
     socket.on("agent_update", (data: Agent) => {
       if (data.id === agentId) {
@@ -201,79 +250,134 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
           <Link href="/dashboard" className="btn btn-ghost btn-sm mb-4">
             ← Back to Dashboard
           </Link>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">{agent.name}</h1>
-              <p className="text-sm opacity-70 mt-1">{agent.id}</p>
+          
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl lg:text-3xl font-bold truncate">{agent.name}</h1>
+              <p className="text-sm opacity-70 mt-1 font-mono truncate">{agent.id}</p>
             </div>
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 lg:gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm opacity-70">Status:</span>
+                <span className="text-sm opacity-70 hidden sm:inline">Status:</span>
                 <div className={`badge ${agent.status === "online" ? "badge-success" : "badge-error"} gap-2`}>
                   <span className="inline-block h-2 w-2 rounded-full bg-white" />
                   {agent.status}
                 </div>
               </div>
-              <AgentStatusBadge agent={agent} />
-              <div className="dropdown dropdown-end">
-                <label
-                  tabIndex={0}
-                  className="btn btn-sm btn-outline btn-secondary gap-2 hover:btn-secondary transition-all duration-200"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span className="font-medium">AI Insights</span>
-                </label>
-                <div
-                  tabIndex={0}
-                  className="dropdown-content z-50 mt-3 w-[90vw] md:w-[600px] max-w-3xl bg-base-200 rounded-2xl shadow-2xl border border-base-300 p-6 max-h-[80vh] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-xl flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-secondary" />
-                      AI Daily Insights
-                    </h3>
-                  </div>
-                  {agent.insightDate && (
-                    <p className="text-xs opacity-60 mb-4">
-                      Generated on {new Date(agent.insightDate).toLocaleDateString()} at{" "}
-                      {new Date(agent.insightDate).toLocaleTimeString()}
-                    </p>
-                  )}
-                  <div className="divider my-2"></div>
-                  <div className="pr-2">
-                    <MarkdownRenderer content={agent.dailyinsights ?? "Error fetching AI Insights"} />
+              
+              {/* Risk Status Badge */}
+              <div className="w-full sm:w-auto">
+                <AgentStatusBadge agent={agent} />
+              </div>
+              
+              <div className="dropdown dropdown-end w-full sm:w-auto">
+                <div className="flex items-center gap-2">
+                  <label
+                    tabIndex={0}
+                    className="btn btn-sm btn-outline btn-primary gap-2 hover:btn-primary transition-all duration-200 w-full sm:w-auto"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="font-medium">Actions</span>
+                  </label>
+                  
+                  <div className="tooltip tooltip-left" data-tip="Agent management actions">
+                    <Info className="w-4 h-4 opacity-60 hover:opacity-100 transition-opacity cursor-help" />
                   </div>
                 </div>
+                
+                <ul
+                  tabIndex={0}
+                  className="dropdown-content z-50 menu p-2 shadow-xl bg-base-200 rounded-box w-64 mt-2 border border-base-300"
+                >
+                  <li>
+                    <label
+                      htmlFor="ai-insights-modal"
+                      className="flex items-center gap-3 p-3 hover:bg-base-300 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4 text-secondary" />
+                      <div className="flex-1">
+                        <span className="font-medium">AI Insights</span>
+                        <p className="text-xs opacity-60">View AI-generated analysis</p>
+                      </div>
+                    </label>
+                  </li>
+                  
+                  <li>
+                    <button
+                      onClick={handleCacheCleanup}
+                      disabled={isCleaningCache}
+                      className="flex items-center gap-3 p-3 hover:bg-base-300 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="w-4 h-4 text-warning" />
+                      <div className="flex-1 text-left">
+                        <span className="font-medium">
+                          {isCleaningCache ? "Cleaning..." : "Clear Cache"}
+                        </span>
+                        <p className="text-xs opacity-60">Free up system memory</p>
+                      </div>
+                      {isCleaningCache && <span className="loading loading-spinner loading-xs"></span>}
+                    </button>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <input type="checkbox" id="ai-insights-modal" className="modal-toggle" />
+          <div className="modal">
+            <div className="modal-box w-11/12 max-w-4xl max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-xl flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-secondary" />
+                  AI Daily Insights
+                </h3>
+                <label htmlFor="ai-insights-modal" className="btn btn-sm btn-circle btn-ghost">
+                  ✕
+                </label>
+              </div>
+              
+              {agent.insightDate && (
+                <p className="text-xs opacity-60 mb-4">
+                  Generated on {new Date(agent.insightDate).toLocaleDateString()} at{" "}
+                  {new Date(agent.insightDate).toLocaleTimeString()}
+                </p>
+              )}
+              
+              <div className="divider my-2"></div>
+              <div className="pr-2">
+                <MarkdownRenderer content={agent.dailyinsights ?? "Error fetching AI Insights"} />
+              </div>
+            </div>
+            <label className="modal-backdrop" htmlFor="ai-insights-modal">Close</label>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="card bg-base-200">
-              <div className="card-body">
+              <div className="card-body p-4">
                 <h3 className="text-sm opacity-70">CPU Usage</h3>
-                <p className="text-3xl font-bold">{agent.CPU}%</p>
+                <p className="text-2xl lg:text-3xl font-bold">{agent.CPU}%</p>
                 <progress className="progress progress-primary" value={agent.CPU} max={100}></progress>
               </div>
             </div>
             <div className="card bg-base-200">
-              <div className="card-body">
+              <div className="card-body p-4">
                 <h3 className="text-sm opacity-70">Memory</h3>
-                <p className="text-3xl font-bold">{agent.memory}%</p>
+                <p className="text-2xl lg:text-3xl font-bold">{agent.memory}%</p>
                 <progress className="progress progress-secondary" value={agent.memory} max={100}></progress>
               </div>
             </div>
             <div className="card bg-base-200">
-              <div className="card-body">
+              <div className="card-body p-4">
                 <h3 className="text-sm opacity-70">Disk Usage</h3>
-                <p className="text-3xl font-bold">{agent.disk}%</p>
+                <p className="text-2xl lg:text-3xl font-bold">{agent.disk}%</p>
                 <progress className="progress progress-accent" value={agent.disk} max={100}></progress>
               </div>
             </div>
             <div className="card bg-base-200">
-              <div className="card-body">
+              <div className="card-body p-4">
                 <h3 className="text-sm opacity-70">Processes</h3>
-                <p className="text-3xl font-bold">{agent.processes}</p>
+                <p className="text-2xl lg:text-3xl font-bold">{agent.processes}</p>
                 <p className="text-xs opacity-60 mt-1">Active processes</p>
               </div>
             </div>

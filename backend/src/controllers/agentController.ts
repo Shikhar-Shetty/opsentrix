@@ -2,6 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import prisma from "../prisma/client.ts";
 import type { Request, Response } from "express";
 import "dotenv/config";
+import axios from "axios";
+import { connectedAgents } from "../socket.ts";
 
 const ai = new GoogleGenAI({apiKey : process.env.GEMINI_API_KEY!});
 
@@ -64,6 +66,25 @@ export const AIInsights = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[AIInsights Error]", error);
     return res.status(500).json({ error: "Failed to generate insights" });
+  }
+};
+
+export const agentCleanup = async (req: Request, res: Response) => {
+  try {
+    const { agentId } = req.body;
+    console.log(agentId)
+    if (!agentId || !connectedAgents[agentId]) return res.status(404).json({ error: "Agent not found or offline" });
+
+    const agent = connectedAgents[agentId];
+    if (!agent?.ip) return res.status(404).json({ error: "Agent IP missing" });
+
+    const agentIp = `http://${agent.ip.replace("::ffff:", "")}:5000`;
+    const response = await axios.post(`${agentIp}/cleanup`, null, { timeout: 5000 });
+    console.log(response.data)
+    res.json(response.data);
+
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 };
 

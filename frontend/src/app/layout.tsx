@@ -3,6 +3,7 @@ import { Encode_Sans_Condensed } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import ClerkUI from "@/components/Clerk";
+import { Toaster } from "sonner";
 
 const encodeSans = Encode_Sans_Condensed({
   subsets: ["latin"],
@@ -26,6 +27,7 @@ export default function RootLayout({
         <body data-theme="forest" className={`${encodeSans.className} antialiased`}>
           <ClerkUI />
           {children}
+          <Toaster position="top-right" richColors/>
         </body>
       </html>
     </ClerkProvider>

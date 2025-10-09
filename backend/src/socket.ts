@@ -5,6 +5,7 @@ import "dotenv/config";
 export const agentLatestMetrics: Record<string, any> = {};
 export const agentLastHeartbeat: Record<string, number> = {};
 const agentTimeout = 10000;
+export const connectedAgents: Record<string, { ip: string; socketId: string }> = {};
 
 export function initSocket(io: Server) {
   io.on("connection", (socket) => {
@@ -15,7 +16,10 @@ export function initSocket(io: Server) {
       agentLatestMetrics[data.id] = data;
       agentLastHeartbeat[data.id] = Date.now();
       socket.data.agentId = data.id;
-
+      connectedAgents[data.id] = {
+        ip: socket.handshake.address,
+        socketId: socket.id,
+      };
       io.emit("agent_update", {
         id: data.id,
         name: data.name,
@@ -44,6 +48,11 @@ export function initSocket(io: Server) {
     socket.on("disconnect", async () => {
       console.log("Socket disconnected");
       const agentId = socket.data.agentId;
+      for (const id in connectedAgents) {
+        if (connectedAgents[id]?.socketId === socket.id) {
+          delete connectedAgents[id];
+        }
+      }
       if (agentId && agentLatestMetrics[agentId]) {
         try {
           await axios.post(`${process.env.BASE_URL}/telemetry`, {
