@@ -45,19 +45,19 @@ const getRisk = (agent: Agent): { level: RiskLevel; message: string } => {
 
 const AgentStatusBadge = ({ agent }: { agent: Agent }) => {
   const risk = getRisk(agent)
-  let colorClass = "bg-green-600/60 text-green-200 text-sm"
+  let colorClass = "bg-green-600/60 text-green-200 rounded-md text-sm"
   let Icon = CheckCircle
 
   if (risk.level === "medium") {
-    colorClass = "bg-yellow-600/60 text-yellow-200 text-sm"
+    colorClass = "bg-yellow-600/60 text-yellow-200 rounded-md text-sm"
     Icon = AlertTriangle
   } else if (risk.level === "high") {
-    colorClass = "bg-red-700/60 text-red-200 text-sm"
+    colorClass = "bg-red-700/60 text-red-200 rounded-md text-sm"
     Icon = AlertCircle
   }
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-1 rounded-lg font-medium ${colorClass}`}>
+    <div className={`flex items-center gap-2 px-3 py-1 rounded-md font-medium ${colorClass}`}>
       <Icon className="w-4 h-4" />
       <span>{risk.message}</span>
     </div>
@@ -266,7 +266,6 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
                 </div>
               </div>
               
-              {/* Risk Status Badge */}
               <div className="w-full sm:w-auto">
                 <AgentStatusBadge agent={agent} />
               </div>
@@ -288,7 +287,7 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
                 
                 <ul
                   tabIndex={0}
-                  className="dropdown-content z-50 menu p-2 shadow-xl bg-base-200 rounded-box w-64 mt-2 border border-base-300"
+                  className="dropdown-content z-50 menu p-2 shadow-xl bg-base-200 rounded-box w-64 mt-2 border border-gray-400/20"
                 >
                   <li>
                     <label

@@ -22,4 +22,6 @@ model Agent {
   summary       String
   dailyinsights String?
   insightDate   DateTime?
+  email         String
+  message       String?
 }

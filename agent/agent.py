@@ -9,15 +9,14 @@ import uvicorn
 import json
 
 # ---------- ENV ----------
-AGENT_NAME = os.getenv("AGENT_NAME", "agt_16f5bfe3686f")
-AGENT_TOKEN = os.getenv("AGENT_TOKEN", "tok_fa85baf2eeed97af44c71fe9")
+AGENT_NAME = os.getenv("AGENT_NAME", "agt_dd104ead27ed")
+AGENT_TOKEN = os.getenv("AGENT_TOKEN", "tok_855d4c314b09d97299618165")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:4000")
 AGENT_PORT = int(os.getenv("AGENT_PORT", 5000))
 METRICS_INTERVAL = int(os.getenv("METRICS_INTERVAL", 10))
 
 # ---------- Socket.IO ----------
 sio = socketio.Client(reconnection=True, reconnection_attempts=0)
-psutil.cpu_percent(interval=None)
 
 @sio.event
 def connect():
@@ -33,7 +32,7 @@ def get_metrics():
         "id": AGENT_NAME,
         "token": AGENT_TOKEN,
         "status": "online",
-        "CPU": psutil.cpu_percent(interval=None),
+        "CPU": psutil.cpu_percent(interval=1),  # Changed: Use 1 second interval
         "memory": psutil.virtual_memory().percent,
         "disk": psutil.disk_usage('/').percent,
         "processes": len(psutil.pids()),
@@ -100,6 +99,9 @@ async def cleanup_endpoint():
 
 # ---------- MAIN ----------
 if __name__ == "__main__":
+    # Initialize CPU monitoring - first call returns 0, so we discard it
+    psutil.cpu_percent(interval=1)
+    
     # Start metrics loop in background
     threading.Thread(target=send_metrics_loop, daemon=True).start()
 

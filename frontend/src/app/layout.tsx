@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body data-theme="forest" className={`${encodeSans.className} antialiased`}>
+        <body data-theme="sunset" className={`${encodeSans.className} antialiased`}>
           <ClerkUI />
           {children}
           <Toaster position="top-right" richColors/>

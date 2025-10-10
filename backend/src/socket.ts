@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import axios from "axios";
 import "dotenv/config";
+import { checkAndSendAlert } from "./utils/alert.ts";
 
 export const agentLatestMetrics: Record<string, any> = {};
 export const agentLastHeartbeat: Record<string, number> = {};
@@ -15,11 +16,13 @@ export function initSocket(io: Server) {
     socket.on("agent_metrics", async (data) => {
       agentLatestMetrics[data.id] = data;
       agentLastHeartbeat[data.id] = Date.now();
+      await checkAndSendAlert(data.id)
       socket.data.agentId = data.id;
       connectedAgents[data.id] = {
         ip: socket.handshake.address,
         socketId: socket.id,
       };
+
       io.emit("agent_update", {
         id: data.id,
         name: data.name,

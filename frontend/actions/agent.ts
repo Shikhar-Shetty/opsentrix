@@ -1,6 +1,6 @@
 "use server"
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import prisma from "../lib/prisma";
 
 type AgentData = {
@@ -12,11 +12,16 @@ type AgentData = {
 export async function createAgent(data: AgentData) {
   const { userId } = await auth();
   if (!userId) throw new Error("User is not authenticated");
+  const user = await currentUser(); 
+  const email = user?.primaryEmailAddress?.emailAddress;  
+  if(!email) throw new Error("Email Not found");
+  
   const newAgent = await prisma.agent.create({
     data: {
       ...data,
       userId,
       summary: "",
+      email
     },
   });
   console.log(newAgent);

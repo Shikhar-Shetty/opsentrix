@@ -3,7 +3,7 @@ import { Activity, Shield, BarChart3, Server, Terminal, ArrowRight, CheckCircle2
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-base-100" data-theme="forest">
+    <div className="min-h-screen bg-base-100">
       <div className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-32 pb-20">
           <div className="text-center max-w-4xl mx-auto">

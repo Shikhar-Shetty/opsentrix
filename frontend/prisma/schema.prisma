@@ -10,6 +10,7 @@ datasource db {
 model Agent {
   id            String   @id @unique
   name          String
+  email         String
   token         String
   status        String   @default("offline")
   lastHeartbeat DateTime @default(now())
@@ -19,6 +20,7 @@ model Agent {
   disk          Float    @default(0.0)
   userId        String
   summary       String
+  message       String?
   dailyinsights String?
   insightDate   DateTime?
   createdAt     DateTime @default(now())
