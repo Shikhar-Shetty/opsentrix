@@ -5,32 +5,52 @@ import "dotenv/config";
 import axios from "axios";
 import { agentLatestMetrics, connectedAgents } from "../socket.ts";
 
-const ai = new GoogleGenAI({apiKey : process.env.GEMINI_API_KEY!});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+
+const getDatesInTimezone = (timezone = "Asia/Kolkata") => {
+  const now = new Date();
+  
+  const todayInTZ = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
+  const yesterdayInTZ = new Date(todayInTZ);
+  yesterdayInTZ.setDate(todayInTZ.getDate() - 1);
+  
+  const todayStr = todayInTZ.toISOString().split("T")[0];
+  const yesterdayStr = yesterdayInTZ.toISOString().split("T")[0];
+  
+  return { todayStr, yesterdayStr, todayInTZ, yesterdayInTZ };
+};
 
 export const AIInsights = async (req: Request, res: Response) => {
   try {
     const agentId = req.body.id;
-    if (!agentId) return res.status(400).json({ error: "Agent ID missing" });
+    
+    if (!agentId) {
+      return res.status(400).json({ error: "Agent ID missing" });
+    }
+
     const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+    
+    if (!agent) {
+      return res.status(404).json({ error: "No Agent Found. Try Again" });
+    }
 
-    if (!agent) return res.status(404).json({ error: "No Agent Found. Try Again" });
+    const { todayStr, yesterdayStr, yesterdayInTZ } = getDatesInTimezone("Asia/Kolkata");
 
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-
-    const todayStr = today.toISOString().split("T")[0];
-    const yesterdayStr = yesterday.toISOString().split("T")[0];
-
-    if (agent.insightDate && agent.insightDate.toISOString().split("T")[0] === yesterdayStr) {
-      console.log(`Insights for ${yesterdayStr} already exist. Skipping generation.`);
-      return res.status(200).json({ message: "Already generated for yesterday." });
+    if (agent.insightDate) {
+      const insightDateStr = new Date(
+        agent.insightDate.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+      ).toISOString().split("T")[0];
+      
+      if (insightDateStr === yesterdayStr) {
+        console.log(`Insights for ${yesterdayStr} already exist. Skipping generation.`);
+        return res.status(200).json({ message: "Already generated for yesterday." });
+      }
     }
 
     const prompt = `
-      You are a professional system analyst. I am providing a summary of CPU, Memory, Disk, and Process metrics with timestamps. 
-      Your task is to generate a **concise, professional paragraph summarizing insights for the day before this day: ${todayStr} only**, focusing on:
+      You are a professional system analyst. I am providing a summary of CPU, Memory, Disk, and Process metrics with timestamps.
 
+      Your task is to generate a **concise, professional paragraph summarizing insights for the day before this day: ${todayStr} only**, focusing on:
       - Key trends (rises/drops in CPU, memory, disk usage, processes)
       - Status changes (online/offline events)
       - Any anomalies or unusual patterns
@@ -42,7 +62,7 @@ export const AIInsights = async (req: Request, res: Response) => {
 
       Output format:
       ${yesterdayStr}: [Compose a concise, professional paragraph that highlights notable changes and insights in system performance, using numerical data (percentages, quantities, etc.) where relevant. Avoid repeating the date or any framing phrases—focus purely on a clear, analytical summary in natural English.]
-    `;
+      `;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -50,25 +70,29 @@ export const AIInsights = async (req: Request, res: Response) => {
     });
 
     const text = response?.text?.trim();
-    if (!text) return res.status(400).json({ error: "AI returned no content" });
+    
+    if (!text) {
+      return res.status(400).json({ error: "AI returned no content" });
+    }
 
+    const yesterdayDate = new Date(yesterdayStr + "T00:00:00.000Z");
+    
     const updatedAgent = await prisma.agent.update({
       where: { id: agent.id },
       data: {
         dailyinsights: text,
-        insightDate: new Date(yesterdayStr as string),
+        insightDate: yesterdayDate,
       },
     });
 
     console.log(`[AI] Generated insights for ${yesterdayStr} → ${agent.id}:`, updatedAgent);
     return res.json(updatedAgent);
-
+    
   } catch (error) {
     console.error("[AIInsights Error]", error);
     return res.status(500).json({ error: "Failed to generate insights" });
   }
 };
-
 export const agentCleanup = async (req: Request, res: Response) => {
   try {
     const { agentId } = req.body;
