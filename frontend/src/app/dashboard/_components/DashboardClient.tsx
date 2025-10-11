@@ -17,8 +17,10 @@ export type Agent = {
   disk: number
   processes: number
   summary: string
-  dailyinsights: string
-  insightDate: Date
+  dailyinsights: string | null
+  insightDate: Date | null
+  message: string | null
+  email: string
 }
 
 const StatusBadge = ({ status }: { status: string }) => (

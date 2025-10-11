@@ -149,7 +149,7 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
     
     try {
       const { data } = await axios.post<CleanupResponse>(
-        `http://localhost:4000/telemetry/clean-up`, 
+        `https://opsentrix.onrender.com/telemetry/clean-up`, 
         { agentId }
       );
       
