@@ -3,7 +3,7 @@ import prisma from "../prisma/client.ts";
 import type { Request, Response } from "express";
 import "dotenv/config";
 import axios from "axios";
-import { connectedAgents } from "../socket.ts";
+import { agentLatestMetrics, connectedAgents } from "../socket.ts";
 
 const ai = new GoogleGenAI({apiKey : process.env.GEMINI_API_KEY!});
 
@@ -72,19 +72,62 @@ export const AIInsights = async (req: Request, res: Response) => {
 export const agentCleanup = async (req: Request, res: Response) => {
   try {
     const { agentId } = req.body;
-    console.log(agentId)
-    if (!agentId || !connectedAgents[agentId]) return res.status(404).json({ error: "Agent not found or offline" });
-
+    console.log(`[Cleanup Request] Agent ID: ${agentId}`);
+    
+    if (!agentId || !connectedAgents[agentId]) {
+      return res.status(404).json({ error: "Agent not found or offline" });
+    }
+    
     const agent = connectedAgents[agentId];
-    if (!agent?.ip) return res.status(404).json({ error: "Agent IP missing" });
-
-    const agentIp = `http://${agent.ip.replace("::ffff:", "")}:5000`;
-    const response = await axios.post(`${agentIp}/cleanup`, null, { timeout: 5000 });
-    console.log(response.data)
+    const metrics = agentLatestMetrics[agentId];
+    
+    if (!metrics?.hostIp || !agent?.port) {
+      console.error(`[Cleanup Error] Missing data - hostIp: ${metrics?.hostIp}, port: ${agent?.port}`);
+      return res.status(404).json({ error: "Agent IP or port missing" });
+    }
+    
+    // SMART DETECTION: Check if agent is connecting from localhost
+    const isLocalAgent = agent.ip.includes("127.0.0.1") || 
+                         agent.ip.includes("::1") || 
+                         agent.ip.includes("::ffff:127.0.0.1") ||
+                         agent.ip === "::1";
+    
+    // Use localhost if agent is local, otherwise use the reported hostIp
+    const targetIp = isLocalAgent ? "localhost" : metrics.hostIp;
+    const agentUrl = `http://${targetIp}:${agent.port}`;
+    
+    console.log(`[Cleanup] Agent is ${isLocalAgent ? 'LOCAL' : 'REMOTE'}`);
+    console.log(`[Cleanup] Connecting to agent at: ${agentUrl}/cleanup`);
+    
+    const response = await axios.post(`${agentUrl}/cleanup`, null, {
+      timeout: 15000,
+      validateStatus: (status) => status < 500
+    });
+    
+    console.log(`[Cleanup] Success:`, response.data);
     res.json(response.data);
-
+    
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error(`[Cleanup Error] ${err.message}`);
+    
+    if (err.code === 'ECONNREFUSED') {
+      return res.status(503).json({
+        error: "Cannot connect to agent. Agent may be offline or port not accessible.",
+        details: err.message
+      });
+    }
+    
+    if (err.code === 'ETIMEDOUT') {
+      return res.status(504).json({
+        error: "Connection to agent timed out.",
+        details: err.message
+      });
+    }
+    
+    res.status(500).json({
+      error: "Cleanup operation failed",
+      details: err.message
+    });
   }
 };
 

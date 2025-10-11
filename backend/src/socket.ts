@@ -6,7 +6,7 @@ import { checkAndSendAlert } from "./utils/alert.ts";
 export const agentLatestMetrics: Record<string, any> = {};
 export const agentLastHeartbeat: Record<string, number> = {};
 const agentTimeout = 10000;
-export const connectedAgents: Record<string, { ip: string; socketId: string }> = {};
+export const connectedAgents: Record<string, { ip: string; socketId: string, port: number }> = {};
 
 export function initSocket(io: Server) {
   io.on("connection", (socket) => {
@@ -21,8 +21,9 @@ export function initSocket(io: Server) {
       connectedAgents[data.id] = {
         ip: socket.handshake.address,
         socketId: socket.id,
+        port: data.port
       };
-
+      console.log(`[Agent Connected] ${data.id} | Host: ${data.hostIp}:${data.port} | Socket: ${socket.handshake.address}`);
       io.emit("agent_update", {
         id: data.id,
         name: data.name,
