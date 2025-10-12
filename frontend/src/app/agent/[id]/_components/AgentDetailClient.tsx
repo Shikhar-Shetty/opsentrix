@@ -138,8 +138,14 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
   }
   
   interface CleanupResponse {
-    status: string;
-    freed: Record<string, FolderCleanupData> & { total: number };
+    success?: boolean;
+    result?: {
+      status: string;
+      freed?: Record<string, FolderCleanupData> & { total: number };
+      output?: string;
+    };
+    error?: string;
+    details?: string;
   }
   
   const handleCacheCleanup = async () => {
@@ -149,30 +155,65 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
     
     try {
       const { data } = await axios.post<CleanupResponse>(
-        `https://opsentrix.onrender.com/telemetry/clean-up`, 
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://opsentrix.onrender.com'}/telemetry/clean-up`, 
         { agentId }
       );
       
-      if (data.status === "success" && data.freed) {
-        const freedData = data.freed;
-        const totalFreed = freedData.total ?? 0;
+      console.log("Cleanup response:", data); // Debug log
+      
+      if (data.success && data.result) {
+        const cleanupResult = data.result;
         
-        const folderDescription = Object.entries(freedData)
-          .filter(([key]) => key !== "total")
-          .map(([folder, val]) => {
-            const freed = (val as FolderCleanupData).freed;
-            return `${folder}: ${freed} MB`;
-          })
-          .join(", ");
-        
-        toast.success(`Cleanup complete! Freed ${totalFreed} MB`);
+        if (cleanupResult.status === "success" && cleanupResult.freed) {
+          const freedData = cleanupResult.freed;
+          const totalFreed = freedData.total ?? 0;
+          
+          const folderDetails = Object.entries(freedData)
+            .filter(([key]) => key !== "total")
+            .map(([folder, val]) => {
+              const freed = (val as FolderCleanupData).freed;
+              return freed > 0 ? `${folder}: ${freed}MB` : null;
+            })
+            .filter(Boolean)
+            .join(", ");
+          
+          if (totalFreed > 0) {
+            toast.success(
+              <div>
+                <div className="font-semibold">Cleanup Complete!</div>
+                <div className="text-sm opacity-90">Freed {totalFreed}MB total</div>
+                {folderDetails && (
+                  <div className="text-xs opacity-70 mt-1">{folderDetails}</div>
+                )}
+              </div>
+            );
+          } else {
+            toast.info("Cleanup complete - system already optimized");
+          }
+        } else if (cleanupResult.status === "error") {
+          toast.error(cleanupResult.output || "Cleanup failed");
+        } else {
+          toast.info("Cleanup completed with no changes");
+        }
+      } else if (data.error) {
+        toast.error(data.error);
+        console.error("Cleanup error:", data.details);
       } else {
-        toast.error("Cleanup returned no data");
+        toast.warning("Cleanup returned unexpected response");
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to initiate cache cleanup:", error);
-      toast.error("Failed to initiate cache cleanup");
+      
+      if (error.response?.status === 404) {
+        toast.error("Agent is offline or not connected");
+      } else if (error.response?.status === 504) {
+        toast.error("Cleanup timed out - agent did not respond");
+      } else if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error("Failed to initiate cache cleanup");
+      }
     } finally {
       setIsCleaningCache(false);
     }
@@ -208,7 +249,6 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
       }
     })
     
-
     socket.on("agent_not_found", (id: string) => {
       if (id === agentId) setNotFound(true)
     })
@@ -247,8 +287,8 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
     <div className="min-h-screen bg-base-100 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <Link href="/dashboard" className="btn btn-ghost btn-sm mb-4">
-            ← Back to Dashboard
+          <Link href="/dashboard" className="btn btn-ghost btn-sm mb-3">
+          ← Back to Dashboard
           </Link>
           
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
@@ -261,7 +301,7 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
               <div className="flex items-center gap-2">
                 <span className="text-sm opacity-70 hidden sm:inline">Status:</span>
                 <div className={`badge ${agent.status === "online" ? "badge-success" : "badge-error"} gap-2`}>
-                  <span className="inline-block h-2 w-2 rounded-full bg-white" />
+                  <span className={`inline-block h-2 w-2 rounded-full ${agent.status === "online" ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
                   {agent.status}
                 </div>
               </div>
@@ -305,15 +345,17 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
                   <li>
                     <button
                       onClick={handleCacheCleanup}
-                      disabled={isCleaningCache}
-                      className="flex items-center gap-3 p-3 hover:bg-base-300 rounded-lg transition-colors disabled:opacity-50"
+                      disabled={isCleaningCache || agent.status !== "online"}
+                      className="flex items-center gap-3 p-3 hover:bg-base-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Trash2 className="w-4 h-4 text-warning" />
                       <div className="flex-1 text-left">
                         <span className="font-medium">
                           {isCleaningCache ? "Cleaning..." : "Clear Cache"}
                         </span>
-                        <p className="text-xs opacity-60">Free up system memory</p>
+                        <p className="text-xs opacity-60">
+                          {agent.status !== "online" ? "Agent must be online" : "Free up system memory"}
+                        </p>
                       </div>
                       {isCleaningCache && <span className="loading loading-spinner loading-xs"></span>}
                     </button>
@@ -355,21 +397,21 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
             <div className="card bg-base-200">
               <div className="card-body p-4">
                 <h3 className="text-sm opacity-70">CPU Usage</h3>
-                <p className="text-2xl lg:text-3xl font-bold">{agent.CPU}%</p>
+                <p className="text-2xl lg:text-3xl font-bold">{agent.CPU.toFixed(1)}%</p>
                 <progress className="progress progress-primary" value={agent.CPU} max={100}></progress>
               </div>
             </div>
             <div className="card bg-base-200">
               <div className="card-body p-4">
                 <h3 className="text-sm opacity-70">Memory</h3>
-                <p className="text-2xl lg:text-3xl font-bold">{agent.memory}%</p>
+                <p className="text-2xl lg:text-3xl font-bold">{agent.memory.toFixed(1)}%</p>
                 <progress className="progress progress-secondary" value={agent.memory} max={100}></progress>
               </div>
             </div>
             <div className="card bg-base-200">
               <div className="card-body p-4">
                 <h3 className="text-sm opacity-70">Disk Usage</h3>
-                <p className="text-2xl lg:text-3xl font-bold">{agent.disk}%</p>
+                <p className="text-2xl lg:text-3xl font-bold">{agent.disk.toFixed(1)}%</p>
                 <progress className="progress progress-accent" value={agent.disk} max={100}></progress>
               </div>
             </div>
@@ -413,12 +455,12 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
                     <div className="flex items-start gap-2">
                       <code
                         id={`docker-cmd-${agent.id}`}
-                        className="text-xs font-mono bg-base-300 px-3 py-2 rounded-lg flex-1 break-all whitespace-pre-wrap"
+                        className="text-xs font-mono bg-base-300 px-2 pl-3 py-2 rounded-lg flex-1 break-all whitespace-pre-wrap"
                       >
                         {`docker run -d --name ${agent.name} -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`}
                       </code>
                       <button
-                        className="btn btn-square btn-sm btn-ghost"
+                        className="btn btn-circle p-1 btn-sm btn-ghost"
                         onClick={() => {
                           const text = document.getElementById(`docker-cmd-${agent.id}`)?.innerText
                           if (text) navigator.clipboard.writeText(text)
