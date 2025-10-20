@@ -6,7 +6,7 @@ import axios from "axios"
 import { socket } from "@/components/socket"
 import AgentMetricsCharts from "./AgentMetricsChart"
 import AgentDeleteButton from "./DeleteAgent"
-import { AlertCircle, AlertTriangle, CheckCircle, Sparkles, Settings, Trash2, Info } from "lucide-react"
+import { AlertCircle, AlertTriangle, CheckCircle, Sparkles, Settings, Trash2, Info, ArrowLeft, Copy, Check } from "lucide-react"
 import { toast } from "sonner";
 
 export interface Agent {
@@ -45,21 +45,21 @@ const getRisk = (agent: Agent): { level: RiskLevel; message: string } => {
 
 const AgentStatusBadge = ({ agent }: { agent: Agent }) => {
   const risk = getRisk(agent)
-  let colorClass = "bg-green-600/60 text-green-200 rounded-md text-sm"
+  let colorClass = "bg-success/20 text-success border border-success/30"
   let Icon = CheckCircle
 
   if (risk.level === "medium") {
-    colorClass = "bg-yellow-600/60 text-yellow-200 rounded-md text-sm"
+    colorClass = "bg-warning/20 text-warning border border-warning/30"
     Icon = AlertTriangle
   } else if (risk.level === "high") {
-    colorClass = "bg-red-700/60 text-red-200 rounded-md text-sm"
+    colorClass = "bg-error/20 text-error border border-error/30"
     Icon = AlertCircle
   }
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-1 rounded-md font-medium ${colorClass}`}>
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium ${colorClass}`}>
       <Icon className="w-4 h-4" />
-      <span>{risk.message}</span>
+      <span className="text-sm">{risk.message}</span>
     </div>
   )
 }
@@ -129,6 +129,8 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
   const [agent, setAgent] = useState<Agent | null>(Agent)
   const [notFound, setNotFound] = useState(false)
   const [isCleaningCache, setIsCleaningCache] = useState(false)
+  const [copiedToken, setCopiedToken] = useState(false)
+  const [copiedDocker, setCopiedDocker] = useState(false)
   const agentId = Agent?.id
 
   interface FolderCleanupData {
@@ -159,7 +161,7 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
         { agentId }
       );
       
-      console.log("Cleanup response:", data); // Debug log
+      console.log("Cleanup response:", data);
       
       if (data.success && data.result) {
         const cleanupResult = data.result;
@@ -218,6 +220,22 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
       setIsCleaningCache(false);
     }
   };
+
+  const copyToClipboard = async (text: string, type: 'token' | 'docker') => {
+    try {
+      await navigator.clipboard.writeText(text)
+      if (type === 'token') {
+        setCopiedToken(true)
+        setTimeout(() => setCopiedToken(false), 2000)
+      } else {
+        setCopiedDocker(true)
+        setTimeout(() => setCopiedDocker(false), 2000)
+      }
+      toast.success('Copied to clipboard!')
+    } catch (error) {
+      toast.error('Failed to copy')
+    }
+  }
 
   useEffect(() => {
     socket.connect()
@@ -284,20 +302,21 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
   }
 
   return (
-    <div className="min-h-screen bg-base-100 p-6">
+    <div className="min-h-screen bg-base-100 p-4 lg:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <Link href="/dashboard" className="btn btn-ghost btn-sm mb-3">
-          ← Back to Dashboard
+          <Link href="/dashboard" className="btn btn-ghost btn-sm mb-4 gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
           </Link>
           
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl lg:text-3xl font-bold truncate">{agent.name}</h1>
-              <p className="text-sm opacity-70 mt-1 font-mono truncate">{agent.id}</p>
+              <h1 className="text-2xl lg:text-3xl font-bold truncate mb-2">{agent.name}</h1>
+              <p className="text-sm opacity-60 font-mono truncate">{agent.id}</p>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 lg:gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm opacity-70 hidden sm:inline">Status:</span>
                 <div className={`badge ${agent.status === "online" ? "badge-success" : "badge-error"} gap-2`}>
@@ -306,15 +325,13 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
                 </div>
               </div>
               
-              <div className="w-full sm:w-auto">
-                <AgentStatusBadge agent={agent} />
-              </div>
+              <AgentStatusBadge agent={agent} />
               
-              <div className="dropdown dropdown-end w-full sm:w-auto">
+              <div className="dropdown dropdown-end">
                 <div className="flex items-center gap-2">
                   <label
                     tabIndex={0}
-                    className="btn btn-sm btn-outline btn-primary gap-2 hover:btn-primary transition-all duration-200 w-full sm:w-auto"
+                    className="btn btn-sm btn-outline btn-primary gap-2 hover:btn-primary transition-all duration-200"
                   >
                     <Settings className="w-4 h-4" />
                     <span className="font-medium">Actions</span>
@@ -327,14 +344,14 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
                 
                 <ul
                   tabIndex={0}
-                  className="dropdown-content z-50 menu p-2 shadow-xl bg-base-200 rounded-box w-64 mt-2 border border-gray-400/20"
+                  className="dropdown-content z-50 menu p-2 shadow-xl bg-base-200 rounded-box w-64 mt-2 border border-base-300"
                 >
                   <li>
                     <label
                       htmlFor="ai-insights-modal"
                       className="flex items-center gap-3 p-3 hover:bg-base-300 rounded-lg transition-colors cursor-pointer"
                     >
-                      <Sparkles className="w-4 h-4 text-secondary" />
+                      <Sparkles className="w-5 h-5 text-secondary" />
                       <div className="flex-1">
                         <span className="font-medium">AI Insights</span>
                         <p className="text-xs opacity-60">View AI-generated analysis</p>
@@ -348,7 +365,7 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
                       disabled={isCleaningCache || agent.status !== "online"}
                       className="flex items-center gap-3 p-3 hover:bg-base-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Trash2 className="w-4 h-4 text-warning" />
+                      <Trash2 className="w-5 h-5 text-warning" />
                       <div className="flex-1 text-left">
                         <span className="font-medium">
                           {isCleaningCache ? "Cleaning..." : "Clear Cache"}
@@ -394,79 +411,93 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="card bg-base-200">
+            <div className="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="card-body p-4">
-                <h3 className="text-sm opacity-70">CPU Usage</h3>
-                <p className="text-2xl lg:text-3xl font-bold">{agent.CPU.toFixed(1)}%</p>
-                <progress className="progress progress-primary" value={agent.CPU} max={100}></progress>
+                <h3 className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">CPU Usage</h3>
+                <p className="text-2xl lg:text-3xl font-bold mb-2">{agent.CPU.toFixed(1)}%</p>
+                <progress 
+                  className={`progress w-full ${agent.CPU >= 80 ? 'progress-error' : agent.CPU >= 60 ? 'progress-warning' : 'progress-primary'}`} 
+                  value={agent.CPU} 
+                  max={100}
+                ></progress>
               </div>
             </div>
-            <div className="card bg-base-200">
+            <div className="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="card-body p-4">
-                <h3 className="text-sm opacity-70">Memory</h3>
-                <p className="text-2xl lg:text-3xl font-bold">{agent.memory.toFixed(1)}%</p>
-                <progress className="progress progress-secondary" value={agent.memory} max={100}></progress>
+                <h3 className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Memory</h3>
+                <p className="text-2xl lg:text-3xl font-bold mb-2">{agent.memory.toFixed(1)}%</p>
+                <progress 
+                  className={`progress w-full ${agent.memory >= 85 ? 'progress-error' : agent.memory >= 70 ? 'progress-warning' : 'progress-secondary'}`}
+                  value={agent.memory} 
+                  max={100}
+                ></progress>
               </div>
             </div>
-            <div className="card bg-base-200">
+            <div className="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="card-body p-4">
-                <h3 className="text-sm opacity-70">Disk Usage</h3>
-                <p className="text-2xl lg:text-3xl font-bold">{agent.disk.toFixed(1)}%</p>
-                <progress className="progress progress-accent" value={agent.disk} max={100}></progress>
+                <h3 className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Disk Usage</h3>
+                <p className="text-2xl lg:text-3xl font-bold mb-2">{agent.disk.toFixed(1)}%</p>
+                <progress 
+                  className={`progress w-full ${agent.disk >= 90 ? 'progress-error' : agent.disk >= 75 ? 'progress-warning' : 'progress-accent'}`}
+                  value={agent.disk} 
+                  max={100}
+                ></progress>
               </div>
             </div>
-            <div className="card bg-base-200">
+            <div className="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
               <div className="card-body p-4">
-                <h3 className="text-sm opacity-70">Processes</h3>
-                <p className="text-2xl lg:text-3xl font-bold">{agent.processes}</p>
-                <p className="text-xs opacity-60 mt-1">Active processes</p>
+                <h3 className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Processes</h3>
+                <p className="text-2xl lg:text-3xl font-bold mb-2">{agent.processes}</p>
+                <p className="text-xs opacity-60">Active processes</p>
               </div>
             </div>
           </div>
 
           <AgentMetricsCharts agent={agent} />
 
-          <div className="card bg-base-200 mt-6">
+          <div className="card bg-base-200 border border-base-300 shadow-sm mt-6">
             <div className="card-body">
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center mb-4">
                 <h2 className="card-title">Agent Information</h2>
                 <AgentDeleteButton agentId={agent.id} />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <p className="text-sm opacity-70">Agent ID</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-3 bg-base-300/50 rounded-lg">
+                  <p className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Agent ID</p>
                   <p className="font-mono text-sm">{agent.id}</p>
                 </div>
-                <div>
-                  <p className="text-sm opacity-70">Last Heartbeat</p>
+                <div className="p-3 bg-base-300/50 rounded-lg">
+                  <p className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Last Heartbeat</p>
                   <p className="text-sm">{new Date(agent.lastHeartbeat).toLocaleString()}</p>
                 </div>
                 {agent.token && (
-                  <div className="md:col-span-2">
-                    <p className="text-sm opacity-70 mb-2">Agent Token</p>
-                    <code className="kbd kbd-sm">{agent.token}</code>
+                  <div className="md:col-span-2 p-3 bg-base-300/50 rounded-lg">
+                    <p className="text-xs font-medium opacity-70 uppercase tracking-wide mb-2">Agent Token</p>
+                    <div className="flex items-start gap-2">
+                      <code className="text-xs font-mono bg-base-100 px-3 py-2 rounded-lg flex-1 break-all border border-base-300">
+                        {agent.token}
+                      </code>
+                      <button
+                        className="btn btn-ghost btn-sm btn-circle flex-shrink-0"
+                        onClick={() => copyToClipboard(agent.token!, 'token')}
+                      >
+                        {copiedToken ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 )}
                 {agent.token && (
-                  <div className="md:col-span-2 space-y-2">
-                    <p className="text-xs uppercase tracking-wider opacity-60 font-semibold flex items-center gap-2">
-                      Docker Run Command
-                    </p>
+                  <div className="md:col-span-2 p-3 bg-base-300/50 rounded-lg">
+                    <p className="text-xs font-medium opacity-70 uppercase tracking-wide mb-2">Docker Run Command</p>
                     <div className="flex items-start gap-2">
-                      <code
-                        id={`docker-cmd-${agent.id}`}
-                        className="text-xs font-mono bg-base-300 px-2 pl-3 py-2 rounded-lg flex-1 break-all whitespace-pre-wrap"
-                      >
+                      <code className="text-xs font-mono bg-base-100 px-3 py-2 rounded-lg flex-1 break-all whitespace-pre-wrap border border-base-300">
                         {`docker run -d --name ${agent.name} -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`}
                       </code>
                       <button
-                        className="btn btn-circle p-1 btn-sm btn-ghost"
-                        onClick={() => {
-                          const text = document.getElementById(`docker-cmd-${agent.id}`)?.innerText
-                          if (text) navigator.clipboard.writeText(text)
-                        }}
+                        className="btn btn-ghost btn-sm btn-circle flex-shrink-0"
+                        onClick={() => copyToClipboard(`docker run -d --name ${agent.name} -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`, 'docker')}
                       >
-                        Copy
+                        {copiedDocker ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
