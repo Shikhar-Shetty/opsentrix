@@ -1,3 +1,4 @@
+// AgentDetailClient.tsx (page component)
 "use client"
 
 import { useEffect, useState } from "react"
@@ -6,10 +7,24 @@ import axios from "axios"
 import { socket } from "@/components/socket"
 import AgentMetricsCharts from "./AgentMetricsChart"
 import AgentDeleteButton from "./DeleteAgent"
-import { AlertCircle, AlertTriangle, CheckCircle, Sparkles, Settings, Trash2, Info, ArrowLeft, Copy, Check } from "lucide-react"
-import { toast } from "sonner";
+import { 
+  AlertCircle, 
+  AlertTriangle, 
+  CheckCircle, 
+  Sparkles, 
+  Settings, 
+  Trash2, 
+  Info, 
+  ArrowLeft, 
+  Copy, 
+  Check,
+  Server,
+  Clock,
+  Shield
+} from "lucide-react"
+import { toast } from "sonner"
 
-export interface Agent {
+export interface AgentI {
   id: string
   name: string
   token?: string
@@ -19,47 +34,48 @@ export interface Agent {
   memory: number
   disk: number
   processes: number
+  summary: string
   dailyinsights: string | null
   insightDate: Date | null
 }
 
 type RiskLevel = "none" | "medium" | "high"
 
-const getRisk = (agent: Agent): { level: RiskLevel; message: string } => {
+const getRisk = (agent: AgentI): { level: RiskLevel; message: string } => {
   if (agent.CPU >= 90 || agent.disk >= 90 || agent.memory >= 95 || agent.processes >= 800) {
-    if (agent.CPU >= 90) return { level: "high", message: "High CPU usage" }
-    if (agent.disk >= 90) return { level: "high", message: "High disk usage" }
-    if (agent.memory >= 95) return { level: "high", message: "High memory usage" }
-    return { level: "high", message: "System under heavy load" }
+    if (agent.CPU >= 90) return { level: "high", message: "Critical CPU load" }
+    if (agent.disk >= 90) return { level: "high", message: "Critical disk usage" }
+    if (agent.memory >= 95) return { level: "high", message: "Critical memory usage" }
+    return { level: "high", message: "System critical" }
   }
 
   if (agent.CPU >= 75 || agent.disk >= 80 || agent.memory >= 85 || agent.processes >= 500) {
-    if (agent.CPU >= 75) return { level: "medium", message: "Elevated CPU usage" }
-    if (agent.disk >= 80) return { level: "medium", message: "Elevated disk usage" }
-    if (agent.memory >= 85) return { level: "medium", message: "Elevated memory usage" }
-    return { level: "medium", message: "System load is elevated" }
+    if (agent.CPU >= 75) return { level: "medium", message: "High CPU usage" }
+    if (agent.disk >= 80) return { level: "medium", message: "High disk usage" }
+    if (agent.memory >= 85) return { level: "medium", message: "High memory usage" }
+    return { level: "medium", message: "System elevated" }
   }
 
-  return { level: "none", message: "No risk detected" }
+  return { level: "none", message: "System healthy" }
 }
 
-const AgentStatusBadge = ({ agent }: { agent: Agent }) => {
+const AgentStatusBadge = ({ agent }: { agent: AgentI }) => {
   const risk = getRisk(agent)
-  let colorClass = "bg-success/20 text-success border border-success/30"
+  let colorClass = "bg-success/10 text-success"
   let Icon = CheckCircle
 
   if (risk.level === "medium") {
-    colorClass = "bg-warning/20 text-warning border border-warning/30"
+    colorClass = "bg-warning/10 text-warning"
     Icon = AlertTriangle
   } else if (risk.level === "high") {
-    colorClass = "bg-error/20 text-error border border-error/30"
+    colorClass = "bg-error/10 text-error"
     Icon = AlertCircle
   }
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium ${colorClass}`}>
-      <Icon className="w-4 h-4" />
-      <span className="text-sm">{risk.message}</span>
+    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${colorClass}`}>
+      <Icon className="w-3.5 h-3.5" />
+      <span>{risk.message}</span>
     </div>
   )
 }
@@ -72,13 +88,6 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
   return (
     <div className="prose prose-sm max-w-none">
       {lines.map((line, idx) => {
-        if (line.startsWith("### ")) {
-          return (
-            <h3 key={idx} className="text-lg font-bold mt-4 mb-2">
-              {line.replace("### ", "")}
-            </h3>
-          )
-        }
         if (line.startsWith("## ")) {
           return (
             <h2 key={idx} className="text-xl font-bold mt-5 mb-3">
@@ -125,8 +134,8 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
   )
 }
 
-export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
-  const [agent, setAgent] = useState<Agent | null>(Agent)
+export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
+  const [agent, setAgent] = useState<AgentI | null>(Agent)
   const [notFound, setNotFound] = useState(false)
   const [isCleaningCache, setIsCleaningCache] = useState(false)
   const [copiedToken, setCopiedToken] = useState(false)
@@ -134,50 +143,48 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
   const agentId = Agent?.id
 
   interface FolderCleanupData {
-    before: number;
-    after: number;
-    freed: number;
+    before: number
+    after: number
+    freed: number
   }
   
   interface CleanupResponse {
-    success?: boolean;
+    success?: boolean
     result?: {
-      status: string;
-      freed?: Record<string, FolderCleanupData> & { total: number };
-      output?: string;
-    };
-    error?: string;
-    details?: string;
+      status: string
+      freed?: Record<string, FolderCleanupData> & { total: number }
+      output?: string
+    }
+    error?: string
+    details?: string
   }
   
   const handleCacheCleanup = async () => {
-    if (!agent) return;
+    if (!agent) return
     
-    setIsCleaningCache(true);
+    setIsCleaningCache(true)
     
     try {
       const { data } = await axios.post<CleanupResponse>(
         `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://opsentrix.onrender.com'}/telemetry/clean-up`, 
         { agentId }
-      );
-      
-      console.log("Cleanup response:", data);
+      )
       
       if (data.success && data.result) {
-        const cleanupResult = data.result;
+        const cleanupResult = data.result
         
         if (cleanupResult.status === "success" && cleanupResult.freed) {
-          const freedData = cleanupResult.freed;
-          const totalFreed = freedData.total ?? 0;
+          const freedData = cleanupResult.freed
+          const totalFreed = freedData.total ?? 0
           
           const folderDetails = Object.entries(freedData)
             .filter(([key]) => key !== "total")
             .map(([folder, val]) => {
-              const freed = (val as FolderCleanupData).freed;
-              return freed > 0 ? `${folder}: ${freed}MB` : null;
+              const freed = (val as FolderCleanupData).freed
+              return freed > 0 ? `${folder}: ${freed}MB` : null
             })
             .filter(Boolean)
-            .join(", ");
+            .join(", ")
           
           if (totalFreed > 0) {
             toast.success(
@@ -188,38 +195,38 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
                   <div className="text-xs opacity-70 mt-1">{folderDetails}</div>
                 )}
               </div>
-            );
+            )
           } else {
-            toast.info("Cleanup complete - system already optimized");
+            toast.info("Cleanup complete - system already optimized")
           }
         } else if (cleanupResult.status === "error") {
-          toast.error(cleanupResult.output || "Cleanup failed");
+          toast.error(cleanupResult.output || "Cleanup failed")
         } else {
-          toast.info("Cleanup completed with no changes");
+          toast.info("Cleanup completed with no changes")
         }
       } else if (data.error) {
-        toast.error(data.error);
-        console.error("Cleanup error:", data.details);
+        toast.error(data.error)
+        console.error("Cleanup error:", data.details)
       } else {
-        toast.warning("Cleanup returned unexpected response");
+        toast.warning("Cleanup returned unexpected response")
       }
       
     } catch (error: any) {
-      console.error("Failed to initiate cache cleanup:", error);
+      console.error("Failed to initiate cache cleanup:", error)
       
       if (error.response?.status === 404) {
-        toast.error("Agent is offline or not connected");
+        toast.error("Agent is offline or not connected")
       } else if (error.response?.status === 504) {
-        toast.error("Cleanup timed out - agent did not respond");
+        toast.error("Cleanup timed out - agent did not respond")
       } else if (error.response?.data?.error) {
-        toast.error(error.response.data.error);
+        toast.error(error.response.data.error)
       } else {
-        toast.error("Failed to initiate cache cleanup");
+        toast.error("Failed to initiate cache cleanup")
       }
     } finally {
-      setIsCleaningCache(false);
+      setIsCleaningCache(false)
     }
-  };
+  }
 
   const copyToClipboard = async (text: string, type: 'token' | 'docker') => {
     try {
@@ -241,7 +248,7 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
     socket.connect()
     socket.emit("get_agent", agentId)
 
-    socket.on("agent_data", (data: Agent) => {
+    socket.on("agent_data", (data: AgentI) => {
       if (data.id === agentId) {
         setAgent((prev) => ({
           ...prev,
@@ -253,7 +260,7 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
       }
     })
 
-    socket.on("agent_update", (data: Agent) => {
+    socket.on("agent_update", (data: AgentI) => {
       if (data.id === agentId) {
         setAgent((prev) => {
           if (!prev) return data
@@ -281,11 +288,13 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
 
   if (notFound) {
     return (
-      <div className="min-h-screen bg-base-100 p-6 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">404</h1>
-          <p className="text-lg opacity-70 mb-6">Agent not found</p>
-          <Link href="/dashboard" className="btn btn-primary">
+          <AlertCircle className="w-16 h-16 text-error mx-auto mb-4" />
+          <h1 className="text-3xl font-bold mb-2">Agent Not Found</h1>
+          <p className="text-sm opacity-60 mb-6">The requested agent does not exist</p>
+          <Link href="/dashboard" className="btn btn-primary btn-sm gap-2">
+            <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </Link>
         </div>
@@ -295,214 +304,160 @@ export default function AgentDetailClient({ Agent }: { Agent: Agent | null }) {
 
   if (!agent) {
     return (
-      <div className="min-h-screen bg-base-100 p-6 flex items-center justify-center">
-        <span className="loading loading-spinner loading-lg"></span>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <span className="loading loading-spinner loading-lg text-primary"></span>
+          <p className="mt-4 text-sm opacity-60">Loading agent data...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-base-100 p-4 lg:p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <Link href="/dashboard" className="btn btn-ghost btn-sm mb-4 gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </Link>
-          
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl lg:text-3xl font-bold truncate mb-2">{agent.name}</h1>
-              <p className="text-sm opacity-60 font-mono truncate">{agent.id}</p>
+    <div className="min-h-screen p-6 max-w-[1600px] mx-auto">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Link href="/dashboard" className="text-sm text-gray-400 hover:underline mb-2 inline-flex items-center gap-1">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back
+            </Link>
+            <h1 className="text-2xl font-bold">{agent.name}</h1>
+            <p className="text-xs opacity-50 font-mono mt-1">{agent.id}</p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className={`badge gap-2 ${agent.status === "online" ? "badge-success" : "badge-error"}`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+              {agent.status}
+            </div>
+            <AgentStatusBadge agent={agent} />
+          </div>
+        </div>
+
+        {/* Quick Actions Bar */}
+        <div className="card bg-base-200 border border-base-300">
+          <div className="card-body p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6 text-sm">
+                <div>
+                  <span className="opacity-50">Processes</span>
+                  <span className="font-semibold ml-2">{agent.processes}</span>
+                </div>
+                <div className="opacity-20">|</div>
+                <div>
+                  <span className="opacity-50">Last Heartbeat</span>
+                  <span className="font-semibold ml-2">{new Date(agent.lastHeartbeat).toLocaleTimeString()}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="ai-insights-modal" className="btn btn-sm btn-ghost gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  AI Insights
+                </label>
+                
+                <div className="dropdown dropdown-end">
+                  <label tabIndex={0} className="btn btn-sm btn-ghost gap-2">
+                    <Settings className="w-4 h-4" />
+                    Actions
+                  </label>
+                  <ul tabIndex={0} className="dropdown-content z-50 menu p-2 shadow-lg bg-base-200 rounded-box w-64 mt-2 border border-base-300">
+                    <li>
+                      <button
+                        onClick={handleCacheCleanup}
+                        disabled={isCleaningCache || agent.status !== "online"}
+                        className="text-sm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>{isCleaningCache ? "Cleaning..." : "Clear Cache"}</span>
+                        {isCleaningCache && <span className="loading loading-spinner loading-xs"></span>}
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Insights Modal */}
+        <input type="checkbox" id="ai-insights-modal" className="modal-toggle" />
+        <div className="modal">
+          <div className="modal-box w-11/12 max-w-4xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-5 h-5 text-secondary" />
+                <div>
+                  <h3 className="font-bold text-lg">AI Daily Insights</h3>
+                  {agent.insightDate && (
+                    <p className="text-xs opacity-60">
+                      {new Date(agent.insightDate).toLocaleDateString()} at{" "}
+                      {new Date(agent.insightDate).toLocaleTimeString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <label htmlFor="ai-insights-modal" className="btn btn-sm btn-circle btn-ghost">✕</label>
+            </div>
+            <div className="divider my-2"></div>
+            <MarkdownRenderer content={agent.dailyinsights ?? "Error fetching AI Insights"} />
+          </div>
+          <label className="modal-backdrop" htmlFor="ai-insights-modal">Close</label>
+        </div>
+
+        {/* Metrics */}
+        <AgentMetricsCharts agent={agent} />
+
+        {/* Configuration */}
+        <div className="card bg-base-200 border border-base-300">
+          <div className="card-body p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">Configuration</h2>
+              <AgentDeleteButton agentId={agent.id} />
             </div>
             
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm opacity-70 hidden sm:inline">Status:</span>
-                <div className={`badge ${agent.status === "online" ? "badge-success" : "badge-error"} gap-2`}>
-                  <span className={`inline-block h-2 w-2 rounded-full ${agent.status === "online" ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
-                  {agent.status}
-                </div>
+            <div className="space-y-3">
+              <div className="p-3 bg-base-300/30 rounded-lg">
+                <div className="text-xs opacity-50 mb-1 uppercase tracking-wide">Agent ID</div>
+                <code className="text-sm font-mono">{agent.id}</code>
               </div>
-              
-              <AgentStatusBadge agent={agent} />
-              
-              <div className="dropdown dropdown-end">
-                <div className="flex items-center gap-2">
-                  <label
-                    tabIndex={0}
-                    className="btn btn-sm btn-outline btn-primary gap-2 hover:btn-primary transition-all duration-200"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span className="font-medium">Actions</span>
-                  </label>
-                  
-                  <div className="tooltip tooltip-left" data-tip="Agent management actions">
-                    <Info className="w-4 h-4 opacity-60 hover:opacity-100 transition-opacity cursor-help" />
-                  </div>
-                </div>
-                
-                <ul
-                  tabIndex={0}
-                  className="dropdown-content z-50 menu p-2 shadow-xl bg-base-200 rounded-box w-64 mt-2 border border-base-300"
-                >
-                  <li>
-                    <label
-                      htmlFor="ai-insights-modal"
-                      className="flex items-center gap-3 p-3 hover:bg-base-300 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Sparkles className="w-5 h-5 text-secondary" />
-                      <div className="flex-1">
-                        <span className="font-medium">AI Insights</span>
-                        <p className="text-xs opacity-60">View AI-generated analysis</p>
-                      </div>
-                    </label>
-                  </li>
-                  
-                  <li>
-                    <button
-                      onClick={handleCacheCleanup}
-                      disabled={isCleaningCache || agent.status !== "online"}
-                      className="flex items-center gap-3 p-3 hover:bg-base-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="w-5 h-5 text-warning" />
-                      <div className="flex-1 text-left">
-                        <span className="font-medium">
-                          {isCleaningCache ? "Cleaning..." : "Clear Cache"}
-                        </span>
-                        <p className="text-xs opacity-60">
-                          {agent.status !== "online" ? "Agent must be online" : "Free up system memory"}
-                        </p>
-                      </div>
-                      {isCleaningCache && <span className="loading loading-spinner loading-xs"></span>}
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
 
-          <input type="checkbox" id="ai-insights-modal" className="modal-toggle" />
-          <div className="modal">
-            <div className="modal-box w-11/12 max-w-4xl max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-xl flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-secondary" />
-                  AI Daily Insights
-                </h3>
-                <label htmlFor="ai-insights-modal" className="btn btn-sm btn-circle btn-ghost">
-                  ✕
-                </label>
-              </div>
-              
-              {agent.insightDate && (
-                <p className="text-xs opacity-60 mb-4">
-                  Generated on {new Date(agent.insightDate).toLocaleDateString()} at{" "}
-                  {new Date(agent.insightDate).toLocaleTimeString()}
-                </p>
-              )}
-              
-              <div className="divider my-2"></div>
-              <div className="pr-2">
-                <MarkdownRenderer content={agent.dailyinsights ?? "Error fetching AI Insights"} />
-              </div>
-            </div>
-            <label className="modal-backdrop" htmlFor="ai-insights-modal">Close</label>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
-              <div className="card-body p-4">
-                <h3 className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">CPU Usage</h3>
-                <p className="text-2xl lg:text-3xl font-bold mb-2">{agent.CPU.toFixed(1)}%</p>
-                <progress 
-                  className={`progress w-full ${agent.CPU >= 80 ? 'progress-error' : agent.CPU >= 60 ? 'progress-warning' : 'progress-primary'}`} 
-                  value={agent.CPU} 
-                  max={100}
-                ></progress>
-              </div>
-            </div>
-            <div className="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
-              <div className="card-body p-4">
-                <h3 className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Memory</h3>
-                <p className="text-2xl lg:text-3xl font-bold mb-2">{agent.memory.toFixed(1)}%</p>
-                <progress 
-                  className={`progress w-full ${agent.memory >= 85 ? 'progress-error' : agent.memory >= 70 ? 'progress-warning' : 'progress-secondary'}`}
-                  value={agent.memory} 
-                  max={100}
-                ></progress>
-              </div>
-            </div>
-            <div className="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
-              <div className="card-body p-4">
-                <h3 className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Disk Usage</h3>
-                <p className="text-2xl lg:text-3xl font-bold mb-2">{agent.disk.toFixed(1)}%</p>
-                <progress 
-                  className={`progress w-full ${agent.disk >= 90 ? 'progress-error' : agent.disk >= 75 ? 'progress-warning' : 'progress-accent'}`}
-                  value={agent.disk} 
-                  max={100}
-                ></progress>
-              </div>
-            </div>
-            <div className="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
-              <div className="card-body p-4">
-                <h3 className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Processes</h3>
-                <p className="text-2xl lg:text-3xl font-bold mb-2">{agent.processes}</p>
-                <p className="text-xs opacity-60">Active processes</p>
-              </div>
-            </div>
-          </div>
-
-          <AgentMetricsCharts agent={agent} />
-
-          <div className="card bg-base-200 border border-base-300 shadow-sm mt-6">
-            <div className="card-body">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="card-title">Agent Information</h2>
-                <AgentDeleteButton agentId={agent.id} />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3 bg-base-300/50 rounded-lg">
-                  <p className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Agent ID</p>
-                  <p className="font-mono text-sm">{agent.id}</p>
-                </div>
-                <div className="p-3 bg-base-300/50 rounded-lg">
-                  <p className="text-xs font-medium opacity-70 uppercase tracking-wide mb-1">Last Heartbeat</p>
-                  <p className="text-sm">{new Date(agent.lastHeartbeat).toLocaleString()}</p>
-                </div>
-                {agent.token && (
-                  <div className="md:col-span-2 p-3 bg-base-300/50 rounded-lg">
-                    <p className="text-xs font-medium opacity-70 uppercase tracking-wide mb-2">Agent Token</p>
-                    <div className="flex items-start gap-2">
-                      <code className="text-xs font-mono bg-base-100 px-3 py-2 rounded-lg flex-1 break-all border border-base-300">
-                        {agent.token}
-                      </code>
+              {agent.token && (
+                <>
+                  <div className="p-3 bg-base-300/30 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-xs opacity-50 uppercase tracking-wide">Token</div>
                       <button
-                        className="btn btn-ghost btn-sm btn-circle flex-shrink-0"
+                        className="btn btn-ghost btn-xs gap-1"
                         onClick={() => copyToClipboard(agent.token!, 'token')}
                       >
-                        {copiedToken ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copiedToken ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                       </button>
                     </div>
+                    <code className="text-xs font-mono break-all">{agent.token}</code>
                   </div>
-                )}
-                {agent.token && (
-                  <div className="md:col-span-2 p-3 bg-base-300/50 rounded-lg">
-                    <p className="text-xs font-medium opacity-70 uppercase tracking-wide mb-2">Docker Run Command</p>
-                    <div className="flex items-start gap-2">
-                      <code className="text-xs font-mono bg-base-100 px-3 py-2 rounded-lg flex-1 break-all whitespace-pre-wrap border border-base-300">
-                        {`docker run -d --name ${agent.name} -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`}
-                      </code>
+
+                  <div className="p-3 bg-base-300/30 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-xs opacity-50 uppercase tracking-wide">Docker Command</div>
                       <button
-                        className="btn btn-ghost btn-sm btn-circle flex-shrink-0"
-                        onClick={() => copyToClipboard(`docker run -d --name ${agent.name} -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`, 'docker')}
+                        className="btn btn-ghost btn-xs gap-1"
+                        onClick={() => copyToClipboard(
+                          `docker run -d --name ${agent.name} -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`,
+                          'docker'
+                        )}
                       >
-                        {copiedDocker ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copiedDocker ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                       </button>
                     </div>
+                    <code className="text-xs font-mono break-all whitespace-pre-wrap">
+                      {`docker run -d --name ${agent.name} -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`}
+                    </code>
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           </div>
         </div>

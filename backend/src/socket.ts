@@ -52,7 +52,7 @@ export function initSocket(io: Server) {
         memory: data.memory,
         disk: data.disk,
         processes: data.processes,
-        status: data.status,
+        status: "online",
         lastHeartbeat: new Date().toISOString(),
       });
       
