@@ -25,6 +25,7 @@ cron.schedule("0 */2 * * *", async () => {
     const metrics = agentLatestMetrics[agentId];
     try {
       await axios.post(`${process.env.BASE_URL}/telemetry`, metrics);
+      await axios.post(`${process.env.BASE_URL}/telemetry/process/insights`, { id: agentId });
       console.log(`[Cron] Stored metrics for agent: ${agentId}`);
     } catch (err) {
       console.error(`[Cron] Failed to store metrics for ${agentId}:`, err);

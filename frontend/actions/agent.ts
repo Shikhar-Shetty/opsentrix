@@ -52,3 +52,35 @@ export async function deleteAgent(id: string) {
   });
   return agent;
 }
+
+export async function getAgentProcesses(agentId: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("User not authenticated");
+  
+  // Verify the agent belongs to the user
+  const agent = await prisma.agent.findUnique({ 
+    where: { id: agentId, userId } 
+  });
+  
+  if (!agent) throw new Error("Agent not found or unauthorized");
+  
+  // Get latest processes (last 50 for example)
+  const processes = await prisma.processMetrics.findMany({
+    where: { agentId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      pid: true,
+      processName: true,
+      cpuUsage: true,
+      memoryUsage: true,
+      status: true,
+      aiFlag: true,
+      aiReason: true,
+      createdAt: true,
+    }
+  });
+  
+  return processes;
+}

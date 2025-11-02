@@ -21,7 +21,23 @@ model Agent {
   userId        String
   summary       String
   message       String?
+  location      String?
   dailyinsights String?
   insightDate   DateTime?
+  process        ProcessMetrics[]
   createdAt     DateTime @default(now())
+}
+
+model ProcessMetrics {
+  id          String   @id @default(uuid())
+  agent       Agent?   @relation(fields: [agentId], references: [id])
+  agentId     String?
+  processName String
+  pid         Int
+  cpuUsage    Float
+  memoryUsage Float
+  status      String     
+  aiFlag      String     @default("unknown") 
+  aiReason    String?
+  createdAt   DateTime   @default(now())
 }

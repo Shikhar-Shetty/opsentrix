@@ -8,20 +8,36 @@ datasource db {
 }
 
 model Agent {
-  id            String    @id @unique
+  id            String           @id @unique
   name          String
   token         String
-  status        String    @default("offline")
-  lastHeartbeat DateTime  @default(now())
-  processes     Int       @default(0)
-  CPU           Float     @default(0.0)
-  memory        Float     @default(0.0)
-  disk          Float     @default(0.0)
+  status        String           @default("offline")
+  lastHeartbeat DateTime         @default(now())
+  processes     Int              @default(0)
+  CPU           Float            @default(0.0)
+  memory        Float            @default(0.0)
+  disk          Float            @default(0.0)
   userId        String
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime         @default(now())
   summary       String
   dailyinsights String?
   insightDate   DateTime?
   email         String
   message       String?
+  location      String?
+  process       ProcessMetrics[]
+}
+
+model ProcessMetrics {
+  id          String   @id @default(uuid())
+  agentId     String?
+  processName String
+  pid         Int
+  cpuUsage    Float
+  memoryUsage Float
+  status      String
+  aiFlag      String   @default("unknown")
+  aiReason    String?
+  createdAt   DateTime @default(now())
+  agent       Agent?   @relation(fields: [agentId], references: [id])
 }

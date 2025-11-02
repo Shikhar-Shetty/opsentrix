@@ -7,22 +7,24 @@ import axios from "axios"
 import { socket } from "@/components/socket"
 import AgentMetricsCharts from "./AgentMetricsChart"
 import AgentDeleteButton from "./DeleteAgent"
-import { 
-  AlertCircle, 
-  AlertTriangle, 
-  CheckCircle, 
-  Sparkles, 
-  Settings, 
-  Trash2, 
-  Info, 
-  ArrowLeft, 
-  Copy, 
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  Sparkles,
+  Settings,
+  Trash2,
+  Info,
+  ArrowLeft,
+  Copy,
   Check,
   Server,
   Clock,
-  Shield
+  Shield,
+  List
 } from "lucide-react"
 import { toast } from "sonner"
+import ProcessListPopup from "./_processComponents/ProcessListPopup"
 
 export interface AgentI {
   id: string
@@ -37,6 +39,18 @@ export interface AgentI {
   summary: string
   dailyinsights: string | null
   insightDate: Date | null
+}
+
+interface ProcessMetric {
+  id: string
+  pid: number
+  processName: string
+  cpuUsage: number
+  memoryUsage: number
+  status: string
+  aiFlag: string
+  aiReason: string | null
+  createdAt: Date
 }
 
 type RiskLevel = "none" | "medium" | "high"
@@ -134,12 +148,17 @@ const MarkdownRenderer = ({ content }: { content: string }) => {
   )
 }
 
-export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
+export default function AgentDetailClient({ Agent, initialProcesses }: {
+  Agent: AgentI | null
+  initialProcesses: ProcessMetric[]
+}) {
   const [agent, setAgent] = useState<AgentI | null>(Agent)
   const [notFound, setNotFound] = useState(false)
   const [isCleaningCache, setIsCleaningCache] = useState(false)
   const [copiedToken, setCopiedToken] = useState(false)
   const [copiedDocker, setCopiedDocker] = useState(false)
+  const [showProcesses, setShowProcesses] = useState(false)
+  const [processes, setProcesses] = useState<ProcessMetric[]>(initialProcesses) // Changed from ps  const [showProcesses, setShowProcesses] = useState(false);
   const agentId = Agent?.id
 
   interface FolderCleanupData {
@@ -147,7 +166,7 @@ export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
     after: number
     freed: number
   }
-  
+
   interface CleanupResponse {
     success?: boolean
     result?: {
@@ -158,25 +177,25 @@ export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
     error?: string
     details?: string
   }
-  
+
   const handleCacheCleanup = async () => {
     if (!agent) return
-    
+
     setIsCleaningCache(true)
-    
+
     try {
       const { data } = await axios.post<CleanupResponse>(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://opsentrix.onrender.com'}/telemetry/clean-up`, 
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://opsentrix.onrender.com'}/telemetry/clean-up`,
         { agentId }
       )
-      
+
       if (data.success && data.result) {
         const cleanupResult = data.result
-        
+
         if (cleanupResult.status === "success" && cleanupResult.freed) {
           const freedData = cleanupResult.freed
           const totalFreed = freedData.total ?? 0
-          
+
           const folderDetails = Object.entries(freedData)
             .filter(([key]) => key !== "total")
             .map(([folder, val]) => {
@@ -185,7 +204,7 @@ export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
             })
             .filter(Boolean)
             .join(", ")
-          
+
           if (totalFreed > 0) {
             toast.success(
               <div>
@@ -210,10 +229,10 @@ export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
       } else {
         toast.warning("Cleanup returned unexpected response")
       }
-      
+
     } catch (error: any) {
       console.error("Failed to initiate cache cleanup:", error)
-      
+
       if (error.response?.status === 404) {
         toast.error("Agent is offline or not connected")
       } else if (error.response?.status === 504) {
@@ -260,6 +279,13 @@ export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
       }
     })
 
+    socket.on("process_update", (data) => {
+      console.log("Process update received:", data)
+      if (data.agentId === agentId && Array.isArray(data.processes)) {
+        setProcesses(data.processes)
+      }
+    })
+
     socket.on("agent_update", (data: AgentI) => {
       if (data.id === agentId) {
         setAgent((prev) => {
@@ -273,13 +299,14 @@ export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
         })
       }
     })
-    
+
     socket.on("agent_not_found", (id: string) => {
       if (id === agentId) setNotFound(true)
     })
 
     return () => {
       socket.off("agent_data")
+      socket.off("process_update")
       socket.off("agent_update")
       socket.off("agent_not_found")
       socket.disconnect()
@@ -357,13 +384,17 @@ export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
                   <Sparkles className="w-4 h-4" />
                   AI Insights
                 </label>
-                
+
                 <div className="dropdown dropdown-end">
                   <label tabIndex={0} className="btn btn-sm btn-ghost gap-2">
                     <Settings className="w-4 h-4" />
                     Actions
                   </label>
-                  <ul tabIndex={0} className="dropdown-content z-50 menu p-2 shadow-lg bg-base-200 rounded-box w-64 mt-2 border border-base-300">
+                  <ul
+                    tabIndex={0}
+                    className="dropdown-content z-50 menu p-2 shadow-lg bg-base-200 rounded-box w-64 mt-2 border border-base-300"
+                    onClick={(e) => e.stopPropagation()} // Prevent dropdown from closing when clicking inside
+                  >
                     <li>
                       <button
                         onClick={handleCacheCleanup}
@@ -375,8 +406,31 @@ export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
                         {isCleaningCache && <span className="loading loading-spinner loading-xs"></span>}
                       </button>
                     </li>
+                    <li>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowProcesses(true)
+                          // Close the dropdown by removing focus
+                          const dropdown = document.activeElement as HTMLElement
+                          dropdown?.blur()
+                        }}
+                        className="text-sm"
+                      >
+                        <List className="w-4 h-4" />
+                        <span>View Processes</span>
+                      </button>
+                    </li>
                   </ul>
                 </div>
+                {/* Process List Popup - Outside dropdown */}
+                {showProcesses && (
+                  <ProcessListPopup 
+                    processes={processes} 
+                    agentId={agentId!}
+                    onClose={() => setShowProcesses(false)} 
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -417,7 +471,7 @@ export default function AgentDetailClient({ Agent }: { Agent: AgentI | null }) {
               <h2 className="text-lg font-bold">Configuration</h2>
               <AgentDeleteButton agentId={agent.id} />
             </div>
-            
+
             <div className="space-y-3">
               <div className="p-3 bg-base-300/30 rounded-lg">
                 <div className="text-xs opacity-50 mb-1 uppercase tracking-wide">Agent ID</div>

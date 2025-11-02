@@ -4,6 +4,7 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import ClerkUI from "@/components/Clerk";
 import { Toaster } from "sonner";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const encodeSans = Encode_Sans_Condensed({
   subsets: ["latin"],
@@ -24,10 +25,11 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body data-theme="sunset" className={`${encodeSans.className} antialiased`}>
+        <body className={`${encodeSans.className} antialiased`}>
           <ClerkUI />
           {children}
           <Toaster position="top-right" richColors/>
+          <ThemeToggle/>
         </body>
       </html>
     </ClerkProvider>
