@@ -2,11 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import prisma from "../prisma/client.ts";
 import type { Request, Response } from "express";
 import "dotenv/config";
-import axios from "axios";
 import { agentLatestMetrics, connectedAgents, sendCleanupCommand } from "../socket.ts";
-import { nanoid } from 'nanoid';
-import { randomUUID } from 'crypto';
-
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -187,6 +183,7 @@ export const metricAgent = async (req: Request, res: Response) => {
         CPU: agentData.CPU,
         lastHeartbeat: new Date(),
         status: agentData.status,
+        location: agentData.location,
         processes: agentData.processes,
         summary: summary
       },
@@ -211,7 +208,6 @@ export const StoreProcessMetrics = async (req: any, res: any) => {
       });
     }
 
-    // Just map the data - NO ID NEEDED!
     const processData = processes.map(proc => ({
       agentId: agentId,
       processName: proc.processName || "unknown",
@@ -247,7 +243,6 @@ export const GenerateProcessInsights = async (req: Request, res: Response) => {
     const agentId = req.body.id;
     if (!agentId) return res.status(400).json({ error: "Agent ID missing" });
 
-    // Get unique process names from recent data
     const processes = await prisma.processMetrics.findMany({
       where: { agentId },
       orderBy: { createdAt: "desc" },
@@ -265,23 +260,23 @@ export const GenerateProcessInsights = async (req: Request, res: Response) => {
       )
       .join("\n");
 
-const prompt = `
+    const prompt = `
 You are a Linux system process analyst. Analyze these processes and determine safety FOR TERMINATION.
 
 CRITICAL RULES FOR SAFE FLAG:
 1. Mark as SAFE only if:
-   - User-owned applications (browsers, editors, user scripts)
-   - Non-critical services that can be restarted
-   - Processes using excessive resources that aren't system-critical
-   - Duplicate or hung processes
+  - User-owned applications (browsers, editors, user scripts)
+  - Non-critical services that can be restarted
+  - Processes using excessive resources that aren't system-critical
+  - Duplicate or hung processes
 
 2. Mark as UNSAFE (cannot be killed safely):
-   - System daemons (systemd, init, kworker, ksoftirqd, etc.)
-   - Kernel threads (anything with [brackets])
-   - Critical services (sshd, networkd, dockerd if it's the agent container)
-   - The monitoring agent itself
-   - Root-owned system processes
-   - Any process under PID 1000 (usually system processes)
+  - System daemons (systemd, init, kworker, ksoftirqd, etc.)
+  - Kernel threads (anything with [brackets])
+  - Critical services (sshd, networkd, dockerd if it's the agent container)
+  - The monitoring agent itself
+  - Root-owned system processes
+  - Any process under PID 1000 (usually system processes)
 
 3. When in doubt, mark as UNSAFE - it's better to prevent killing than to risk system stability
 
@@ -315,7 +310,6 @@ ${processSummary}
       const reason = match?.[1]?.trim() || "Standard system process";
       const flag = match?.[2]?.trim()?.toLowerCase() || "safe"; // Default to SAFE
 
-      // Update ALL instances of this process name with AI insights
       await prisma.processMetrics.updateMany({
         where: {
           agentId,
@@ -352,7 +346,6 @@ export const GetRecentProcessMetrics = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Agent ID missing" });
     }
 
-    // Get most recent AI-analyzed process for each unique process name
     const processes = await prisma.$queryRaw`
       SELECT DISTINCT ON (processName) 
         id, processName, pid, cpuUsage, memoryUsage, status, aiFlag, aiReason, createdAt
@@ -379,11 +372,10 @@ export const GetAICachedProcesses = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Agent ID missing" });
     }
 
-    // Get the most recent AI analysis for each unique process name
     const processes = await prisma.processMetrics.findMany({
       where: {
         agentId,
-        aiFlag: { not: "unknown" } // Only get analyzed processes
+        aiFlag: { not: "unknown" }
       },
       orderBy: { createdAt: "desc" },
       distinct: ['processName'],

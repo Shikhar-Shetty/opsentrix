@@ -7,14 +7,14 @@ import threading
 from fastapi import FastAPI
 import uvicorn
 import json
+import requests
 
 # ---------- ENV ----------
 AGENT_NAME = os.getenv("AGENT_NAME", "agt_dd104ead27ed")
 AGENT_TOKEN = os.getenv("AGENT_TOKEN", "tok_855d4c314b09d97299618165")
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:4000/")
+BACKEND_URL = os.getenv("BACKEND_URL", "https://opsentrix.onrender.com/") # http://host.docker.internal:4000, If running Backend in local and the agent in Docker.
 METRICS_INTERVAL = int(os.getenv("METRICS_INTERVAL", 10))
 
-# ---------- Socket.IO Client ----------
 sio = socketio.Client(reconnection=True, reconnection_attempts=0)
 
 @sio.event
@@ -50,6 +50,17 @@ def cleanup_command(data):
     })
     
     print("[Socket.IO] Cleanup response sent")
+
+
+def get_location():
+    try:
+        ipinfo = requests.get("https://ipinfo.io/json", timeout=3).json()
+        region = ipinfo.get("region", "Unknown")
+        country = ipinfo.get("country", "Unknown")
+        return f"{region}, {country}"
+    except Exception:
+        return "Unknown:Unknown:Unknown"
+    
 
 # ---------- Cleanup Function ----------
 def run_cleanup():
@@ -87,6 +98,8 @@ def run_cleanup():
 
 # ---------- System Metrics ----------
 def get_metrics():
+    location = get_location()
+    print(f"location: {location}")
     return {
         "id": AGENT_NAME,
         "token": AGENT_TOKEN,
@@ -94,6 +107,7 @@ def get_metrics():
         "CPU": psutil.cpu_percent(interval=1),
         "memory": psutil.virtual_memory().percent,
         "disk": psutil.disk_usage('/').percent,
+        "location": location,
         "processes": len(psutil.pids()),
         "lastHeartbeat": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }

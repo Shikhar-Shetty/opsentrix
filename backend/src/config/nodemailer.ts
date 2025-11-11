@@ -19,7 +19,7 @@ export async function sendAlertEmail(to: string, text: string, agentName: string
         console.log("Message:",to);
         console.log("Message sent: %s", info.messageId);
         console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
-      } catch (err) {
+    } catch (err) {
         console.error("Email failed:", err);
     }
 }

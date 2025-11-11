@@ -52,6 +52,7 @@ export function initSocket(io: Server) {
         token: data.token,
         memory: data.memory,
         disk: data.disk,
+        location: data.location,
         processes: data.processes,
         status: "online",
         lastHeartbeat: new Date().toISOString(),
@@ -71,24 +72,20 @@ export function initSocket(io: Server) {
     });
 
 
-    // Update the process_metrics handler
     socket.on("process_metrics", async (data) => {
       const agentId = data.agentId;
       console.log(`[Process Metrics] from ${agentId} (${data.processes.length} processes)`);
 
-      // Enrich real-time data with AI insights from database
       const enrichedProcesses = await enrichProcessesWithAI(agentId, data.processes);
 
-      // Forward ENRICHED data to dashboard frontend (live updates)
       io.emit("process_update", {
         agentId,
         processes: enrichedProcesses
       });
 
-      // Store in database periodically (every 2 minutes)
       const now = Date.now();
       const lastStore = agentLastProcessStore[agentId] || 0;
-      const STORE_INTERVAL = 120000; // 2 minutes
+      const STORE_INTERVAL = 120000;
 
       if (now - lastStore > STORE_INTERVAL) {
         try {
@@ -96,7 +93,6 @@ export function initSocket(io: Server) {
           console.log(`[DB] Stored process metrics for ${agentId}`);
           agentLastProcessStore[agentId] = now;
 
-          // Generate AI insights after storing
           await axios.post(`${process.env.BASE_URL}/telemetry/process/insights`, { id: agentId });
           console.log(`[AI] Triggered insights generation for ${agentId}`);
         } catch (err: any) {
@@ -105,10 +101,8 @@ export function initSocket(io: Server) {
       }
     });
 
-    // Add this helper function at the bottom of socket.ts
     async function enrichProcessesWithAI(agentId: string, realtimeProcesses: any[]) {
       try {
-        // Fetch AI-analyzed processes from database
         const response = await axios.get(
           `${process.env.BASE_URL}/telemetry/process/ai-cache/${agentId}`,
           { timeout: 3000 }
@@ -125,7 +119,6 @@ export function initSocket(io: Server) {
           }));
         }
 
-        // Create a map: processName -> AI insights
         const aiMap = new Map<string, { aiFlag: string; aiReason: string | null }>();
 
         storedProcesses.forEach((stored: any) => {
@@ -140,7 +133,6 @@ export function initSocket(io: Server) {
 
         console.log(`[Enrich] Mapped ${aiMap.size} processes for ${agentId}`);
 
-        // Enrich real-time processes
         const enriched = realtimeProcesses.map(p => {
           const key = p.processName?.toLowerCase()?.trim();
           const aiData = key ? aiMap.get(key) : null;
@@ -159,7 +151,6 @@ export function initSocket(io: Server) {
 
       } catch (error: any) {
         console.error("[Enrich Process Error]", error.message);
-        // Return with unknown if enrichment fails
         return realtimeProcesses.map(p => ({
           ...p,
           aiFlag: "unknown",
@@ -168,7 +159,6 @@ export function initSocket(io: Server) {
       }
     }
 
-    // For killing a Process
     socket.on("kill_process", (data) => {
       const { agentId, pid } = data;
       const agentSocket = connectedAgents[agentId];
@@ -178,13 +168,11 @@ export function initSocket(io: Server) {
       agentSocket.emit("kill_process", { pid });
     });
 
-    // Kill Response
     socket.on("process_kill_response", (data) => {
       console.log(`[Kill Response] Agent ${socket.data.agentId}:`, data);
       io.emit("process_kill_result", data);
     });
 
-    // Cache cleanup
     socket.on("cleanup_response", (data) => {
       const { requestId, result, agentId } = data;
       console.log(`[Cleanup Response] Agent ${agentId}, Request ${requestId}`);

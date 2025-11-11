@@ -14,13 +14,9 @@ import {
   Sparkles,
   Settings,
   Trash2,
-  Info,
   ArrowLeft,
   Copy,
   Check,
-  Server,
-  Clock,
-  Shield,
   List
 } from "lucide-react"
 import { toast } from "sonner"
@@ -32,6 +28,7 @@ export interface AgentI {
   token?: string
   status: string
   lastHeartbeat: Date
+  location: string | null
   CPU: number
   memory: number
   disk: number
@@ -369,13 +366,18 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6 text-sm">
                 <div>
-                  <span className="opacity-50">Processes</span>
+                  <span className="opacity-50">Processes:</span>
                   <span className="font-semibold ml-2">{agent.processes}</span>
                 </div>
                 <div className="opacity-20">|</div>
                 <div>
-                  <span className="opacity-50">Last Heartbeat</span>
+                  <span className="opacity-50">Last Heartbeat:</span>
                   <span className="font-semibold ml-2">{new Date(agent.lastHeartbeat).toLocaleTimeString()}</span>
+                </div>
+                <div className="opacity-20">|</div>
+                <div>
+                  <span className="opacity-50">Location:</span>
+                  <span className="font-semibold ml-2">{agent.location}</span>
                 </div>
               </div>
 
@@ -393,7 +395,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                   <ul
                     tabIndex={0}
                     className="dropdown-content z-50 menu p-2 shadow-lg bg-base-200 rounded-box w-64 mt-2 border border-base-300"
-                    onClick={(e) => e.stopPropagation()} // Prevent dropdown from closing when clicking inside
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <li>
                       <button
@@ -411,7 +413,6 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                         onClick={(e) => {
                           e.stopPropagation()
                           setShowProcesses(true)
-                          // Close the dropdown by removing focus
                           const dropdown = document.activeElement as HTMLElement
                           dropdown?.blur()
                         }}
@@ -423,7 +424,6 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                     </li>
                   </ul>
                 </div>
-                {/* Process List Popup - Outside dropdown */}
                 {showProcesses && (
                   <ProcessListPopup 
                     processes={processes} 
