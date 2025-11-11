@@ -401,7 +401,11 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                       <button
                         onClick={handleCacheCleanup}
                         disabled={isCleaningCache || agent.status !== "online"}
-                        className="text-sm"
+                        className={`text-sm flex items-center gap-2 ${agent.status !== "online"
+                            ? "opacity-60 cursor-not-allowed tooltip tooltip-bottom"
+                            : ""
+                          }`}
+                        data-tip={agent.status !== "online" ? "Agent is offline" : ""}
                       >
                         <Trash2 className="w-4 h-4" />
                         <span>{isCleaningCache ? "Cleaning..." : "Clear Cache"}</span>
@@ -425,10 +429,10 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                   </ul>
                 </div>
                 {showProcesses && (
-                  <ProcessListPopup 
-                    processes={processes} 
+                  <ProcessListPopup
+                    processes={processes}
                     agentId={agentId!}
-                    onClose={() => setShowProcesses(false)} 
+                    onClose={() => setShowProcesses(false)}
                   />
                 )}
               </div>
@@ -499,7 +503,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                       <button
                         className="btn btn-ghost btn-xs gap-1"
                         onClick={() => copyToClipboard(
-                          `docker run -d --name ${agent.name} -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`,
+                          `docker run -d --name ${agent.name} --privileged --pid=host -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`,
                           'docker'
                         )}
                       >
@@ -507,7 +511,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                       </button>
                     </div>
                     <code className="text-xs font-mono break-all whitespace-pre-wrap">
-                      {`docker run -d --name ${agent.name} -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`}
+                      {`docker run -d --name ${agent.name} --privileged --pid=host -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`}
                     </code>
                   </div>
                 </>
