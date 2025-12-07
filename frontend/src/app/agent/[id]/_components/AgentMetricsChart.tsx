@@ -1,4 +1,4 @@
-// AgentMetricsChart.tsx
+
 "use client"
 
 import {
@@ -118,7 +118,7 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
 
   return (
     <div className="space-y-4">
-      {/* Metric Cards */}
+      {}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {currentMetrics.map((metric, idx) => {
           const Icon = metric.icon
@@ -161,9 +161,9 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
         })}
       </div>
 
-      {/* Charts */}
+      {}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Timeline Chart */}
+        {}
         <div className="lg:col-span-2 card bg-base-200 border border-base-300">
           <div className="card-body p-5">
             <div className="flex items-center justify-between mb-4">
@@ -252,7 +252,7 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
           </div>
         </div>
 
-        {/* Radial Chart */}
+        {}
         <div className="card bg-base-200 border border-base-300">
           <div className="card-body p-5">
             <h3 className="text-sm font-bold mb-4">Resource Distribution</h3>

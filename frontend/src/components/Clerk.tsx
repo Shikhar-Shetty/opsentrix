@@ -14,7 +14,7 @@ function ClerkUI() {
         <header className="sticky top-0 z-50 w-full border-b border-base-300 bg-base-100/80 backdrop-blur-lg">
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
                 <div className="flex justify-between items-center h-20">
-                    {/* Logo */}
+                    {}
                     <div className="flex items-center gap-3 group cursor-pointer">
                         <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 transition-all duration-300">
                             <Activity className="w-6 h-6 text-primary" />
@@ -22,7 +22,7 @@ function ClerkUI() {
                         <span className="text-2xl font-bold text-base-content">OpSentrix</span>
                     </div>
 
-                    {/* Auth Buttons */}
+                    {}
                     <div className="flex items-center gap-3">
                         <SignedOut>
                             <SignInButton>

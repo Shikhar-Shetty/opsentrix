@@ -341,7 +341,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-[1600px] mx-auto">
       <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
+        {}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1 min-w-0">
             <Link href="/dashboard" className="text-sm text-gray-400 hover:underline mb-2 inline-flex items-center gap-1">
@@ -361,7 +361,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
           </div>
         </div>
 
-        {/* Quick Actions Bar */}
+        {}
         <div className="card bg-base-200 border border-base-300">
           <div className="card-body p-3 sm:p-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -443,7 +443,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
           </div>
         </div>
 
-        {/* AI Insights Modal */}
+        {}
         <input type="checkbox" id="ai-insights-modal" className="modal-toggle" />
         <div className="modal">
           <div className="modal-box w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -468,10 +468,10 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
           <label className="modal-backdrop" htmlFor="ai-insights-modal">Close</label>
         </div>
 
-        {/* Metrics */}
+        {}
         <AgentMetricsCharts agent={agent} />
 
-        {/* Configuration */}
+        {}
         <div className="card bg-base-200 border border-base-300">
           <div className="card-body p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">

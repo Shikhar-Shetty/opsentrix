@@ -54,7 +54,7 @@ export default function ProcessListPopup({
     setProcessToKill(null)
     setKillingPid(pid)
 
-    // Set up listener BEFORE emitting
+    
     const killResponseHandler = (data: KillResponse) => {
       console.log("Received process_kill_result:", data)
 
@@ -89,14 +89,14 @@ export default function ProcessListPopup({
       }
     }
 
-    // Listen for response
+    
     socket.on("process_kill_result", killResponseHandler)
 
-    // Emit socket event
+    
     console.log("Emitting kill_process:", { agentId, pid })
     socket.emit("kill_process", { agentId, pid })
 
-    // Timeout after 15 seconds
+    
     setTimeout(() => {
       setKillingPid((current) => {
         if (current === pid) {
@@ -122,7 +122,7 @@ export default function ProcessListPopup({
     }
   }
 
-  // Debug: Log socket connection status
+  
   useEffect(() => {
     console.log("ProcessListPopup mounted. Socket connected:", socket.connected)
     console.log("Agent ID:", agentId)
@@ -144,7 +144,7 @@ export default function ProcessListPopup({
         onClick={handleBackdropClick}
       >
         <div className="w-full max-w-[1200px] h-[85vh] flex flex-col lg:flex-row gap-4 lg:gap-6">
-          {/* Left Side - Process List (Floating Card) */}
+          {}
           <div className="w-full lg:w-[40%] flex flex-col bg-base-200/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-base-300/50 overflow-hidden max-h-[45vh] lg:max-h-full">
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-base-300/50">
               <div>
@@ -202,11 +202,11 @@ export default function ProcessListPopup({
             </div>
           </div>
 
-          {/* Right Side - Process Details */}
+          {}
           <div className="flex-1 flex flex-col overflow-hidden">
             {selectedProcess ? (
               <>
-                {/* Header Card (Floating) */}
+                {}
                 <div className="bg-base-200/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-base-300/50 p-4 sm:p-6 mb-4 flex-shrink-0">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="min-w-0">
@@ -249,9 +249,9 @@ export default function ProcessListPopup({
                   </div>
                 </div>
 
-                {/* Details Section */}
+                {}
                 <div className="flex-1 overflow-y-auto space-y-4">
-                  {/* Status & Safety Cards (Floating) */}
+                  {}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-base-200/90 backdrop-blur-xl rounded-2xl shadow-xl border border-base-300/50 p-4 sm:p-5">
                       <div className="text-xs opacity-50 mb-2 uppercase tracking-wide">Status</div>
@@ -282,7 +282,7 @@ export default function ProcessListPopup({
                     </div>
                   </div>
 
-                  {/* CPU Usage Card (Floating) */}
+                  {}
                   <div className="bg-base-200/90 backdrop-blur-xl rounded-2xl shadow-xl border border-base-300/50 p-4 sm:p-5">
                     <div className="text-xs opacity-50 mb-2 uppercase tracking-wide">CPU Usage</div>
                     <div className="flex items-end justify-between mb-3">
@@ -296,7 +296,7 @@ export default function ProcessListPopup({
                     ></progress>
                   </div>
 
-                  {/* Memory Usage Card (Floating) */}
+                  {}
                   <div className="bg-base-200/90 backdrop-blur-xl rounded-2xl shadow-xl border border-base-300/50 p-4 sm:p-5">
                     <div className="text-xs opacity-50 mb-2 uppercase tracking-wide">Memory Usage</div>
                     <div className="flex items-end justify-between mb-3">
@@ -310,7 +310,7 @@ export default function ProcessListPopup({
                     ></progress>
                   </div>
 
-                  {/* AI Analysis Card (Floating) */}
+                  {}
                   <div className="bg-base-200/90 backdrop-blur-xl rounded-2xl shadow-xl border border-base-300/50 p-4 sm:p-5">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="text-xs opacity-50 uppercase tracking-wide">AI Analysis</div>
@@ -352,7 +352,7 @@ export default function ProcessListPopup({
         </div>
       </div>
 
-      {/* Kill Process Confirmation Modal */}
+      {}
       {processToKill && (
         <KillProcessModal
           isOpen={showKillModal}

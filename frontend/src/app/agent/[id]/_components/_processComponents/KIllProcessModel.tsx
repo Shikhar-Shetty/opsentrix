@@ -29,7 +29,7 @@ export default function KillProcessModal({
             onClick={handleBackdropClick}
         >
             <div className="bg-base-200 rounded-2xl shadow-2xl border border-base-300 max-w-md w-full overflow-hidden">
-                {/* Header */}
+                {}
                 <div className="bg-error/10 border-b border-error/20 p-4 sm:p-6">
                     <div className="flex items-start gap-3 sm:gap-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-error/20 flex items-center justify-center flex-shrink-0">
@@ -48,7 +48,7 @@ export default function KillProcessModal({
                     </div>
                 </div>
 
-                {/* Content */}
+                {}
                 <div className="p-4 sm:p-6 space-y-4">
                     <div className="bg-base-300/30 rounded-lg p-3 sm:p-4 space-y-3">
                         <div>
@@ -76,7 +76,6 @@ export default function KillProcessModal({
                     </div>
                 </div>
 
-                {/* Footer */}
                 <div className="bg-base-300/30 border-t border-base-300 p-3 sm:p-4 flex items-center justify-end gap-2 sm:gap-3">
                     <button
                         onClick={onCancel}

@@ -4,23 +4,23 @@ import { Activity, Shield, BarChart3, Server, Terminal, ArrowRight, CheckCircle2
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-base-100">
-      {/* Hero Section */}
+      {}
       <div className="relative overflow-hidden">
-        {/* Animated gradient background */}
+        {}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 animate-pulse" style={{ animationDuration: '8s' }}></div>
 
-        {/* Decorative grid */}
+        {}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,theme(colors.base-content/0.03)_1px,transparent_1px),linear-gradient(to_bottom,theme(colors.base-content/0.03)_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
 
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8 pt-20 sm:pt-32 pb-24">
           <div className="text-center max-w-4xl mx-auto">
-            {/* Badge */}
+            {}
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 backdrop-blur-sm border border-primary/20 rounded-full mb-8 hover:bg-primary/20 transition-all duration-300">
               <Activity className="w-4 h-4 text-primary animate-pulse" />
               <span className="text-sm font-semibold text-base-content">Enterprise Monitoring Platform</span>
             </div>
 
-            {/* Main heading with animation */}
+            {}
             <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-base-content mb-6 leading-tight animate-fade-in">
               Monitor Your Infrastructure
               <br />
@@ -34,7 +34,7 @@ export default function LandingPage() {
               and resource utilization with industry-leading precision.
             </p>
 
-            {/* CTA Buttons */}
+            {}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
               <a
                 href="/dashboard"
@@ -52,7 +52,7 @@ export default function LandingPage() {
               </a>
             </div>
 
-            {/* Stats Grid */}
+            {}
             <div className="grid grid-cols-3 gap-4 text-secondary sm:gap-8 max-w-3xl mx-auto">
               <div className="card bg-base-200/50 backdrop-blur-sm border border-base-300 p-4 sm:p-6 hover:bg-base-200 transition-all duration-300 hover:scale-105">
                 <div className="text-3xl sm:text-4xl text-gray-600 font-bold mb-2">99.9%</div>
@@ -71,7 +71,7 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Features Section */}
+      {}
       <div id="features" className="max-w-7xl mx-auto px-6 lg:px-8 py-16 sm:py-24">
         <div className="text-center mb-16">
           <div className="badge badge-primary badge-lg mb-4">Features</div>
@@ -146,7 +146,7 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* How It Works Section */}
+      {}
       <div className="bg-base-200 py-16 sm:py-24">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -197,7 +197,7 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Code Example Section */}
+      {}
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 sm:py-24">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="order-2 lg:order-1">
@@ -266,7 +266,7 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* CTA Section */}
+      {}
       <div className="bg-gradient-to-br from-primary/10 via-base-200 to-secondary/10 py-16 sm:py-24">
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
           <div className="w-20 h-20 bg-primary/10 backdrop-blur-sm rounded-3xl flex items-center justify-center mx-auto mb-6 animate-pulse">
@@ -299,7 +299,7 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Footer */}
+      {}
       <footer className="border-t border-base-300 bg-base-200 py-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-col items-center gap-4">

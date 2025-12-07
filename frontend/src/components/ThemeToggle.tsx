@@ -7,7 +7,7 @@ export default function ThemeToggle() {
   const [theme, setTheme] = useState("sunset");
 
   useEffect(() => {
-    // get theme from localStorage or default
+    
     const stored = localStorage.getItem("theme") || "sunset";
     setTheme(stored);
     document.body.setAttribute("data-theme", stored);
