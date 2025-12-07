@@ -11,4 +11,4 @@ COPY agent.py ./
 
 RUN chmod +x cleanup.sh
 
-CMD ["python3", "agent.py"]
+CMD ["python3", "-u", "agent.py"]

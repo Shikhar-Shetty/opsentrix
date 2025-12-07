@@ -1,4 +1,3 @@
-// AgentDetailClient.tsx (page component)
 "use client"
 
 import { useEffect, useState } from "react"
@@ -155,7 +154,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
   const [copiedToken, setCopiedToken] = useState(false)
   const [copiedDocker, setCopiedDocker] = useState(false)
   const [showProcesses, setShowProcesses] = useState(false)
-  const [processes, setProcesses] = useState<ProcessMetric[]>(initialProcesses) // Changed from ps  const [showProcesses, setShowProcesses] = useState(false);
+  const [processes, setProcesses] = useState<ProcessMetric[]>(initialProcesses)
   const agentId = Agent?.id
 
   interface FolderCleanupData {
@@ -227,15 +226,17 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
         toast.warning("Cleanup returned unexpected response")
       }
 
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to initiate cache cleanup:", error)
 
-      if (error.response?.status === 404) {
+      const axiosError = error as { response?: { status?: number, data?: { error?: string } } }
+
+      if (axiosError.response?.status === 404) {
         toast.error("Agent is offline or not connected")
-      } else if (error.response?.status === 504) {
+      } else if (axiosError.response?.status === 504) {
         toast.error("Cleanup timed out - agent did not respond")
-      } else if (error.response?.data?.error) {
-        toast.error(error.response.data.error)
+      } else if (axiosError.response?.data?.error) {
+        toast.error(axiosError.response.data.error)
       } else {
         toast.error("Failed to initiate cache cleanup")
       }
@@ -255,7 +256,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
         setTimeout(() => setCopiedDocker(false), 2000)
       }
       toast.success('Copied to clipboard!')
-    } catch (error) {
+    } catch {
       toast.error('Failed to copy')
     }
   }
@@ -312,10 +313,10 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
 
   if (notFound) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-6">
         <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-error mx-auto mb-4" />
-          <h1 className="text-3xl font-bold mb-2">Agent Not Found</h1>
+          <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-error mx-auto mb-4" />
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Agent Not Found</h1>
           <p className="text-sm opacity-60 mb-6">The requested agent does not exist</p>
           <Link href="/dashboard" className="btn btn-primary btn-sm gap-2">
             <ArrowLeft className="w-4 h-4" />
@@ -328,7 +329,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
 
   if (!agent) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
           <span className="loading loading-spinner loading-lg text-primary"></span>
           <p className="mt-4 text-sm opacity-60">Loading agent data...</p>
@@ -338,20 +339,20 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
   }
 
   return (
-    <div className="min-h-screen p-6 max-w-[1600px] mx-auto">
-      <div className="space-y-6">
+    <div className="min-h-screen p-4 sm:p-6 max-w-[1600px] mx-auto">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <Link href="/dashboard" className="text-sm text-gray-400 hover:underline mb-2 inline-flex items-center gap-1">
               <ArrowLeft className="w-3.5 h-3.5" />
               Back
             </Link>
-            <h1 className="text-2xl font-bold">{agent.name}</h1>
-            <p className="text-xs opacity-50 font-mono mt-1">{agent.id}</p>
+            <h1 className="text-xl sm:text-2xl font-bold truncate">{agent.name}</h1>
+            <p className="text-xs opacity-50 font-mono mt-1 break-all">{agent.id}</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <div className={`badge gap-2 ${agent.status === "online" ? "badge-success" : "badge-error"}`}>
               <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
               {agent.status}
@@ -362,33 +363,34 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
 
         {/* Quick Actions Bar */}
         <div className="card bg-base-200 border border-base-300">
-          <div className="card-body p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6 text-sm">
-                <div>
+          <div className="card-body p-3 sm:p-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm">
+                <div className="flex items-center justify-between sm:justify-start">
                   <span className="opacity-50">Processes:</span>
                   <span className="font-semibold ml-2">{agent.processes}</span>
                 </div>
-                <div className="opacity-20">|</div>
-                <div>
+                <div className="hidden sm:block opacity-20">|</div>
+                <div className="flex items-center justify-between sm:justify-start">
                   <span className="opacity-50">Last Heartbeat:</span>
                   <span className="font-semibold ml-2">{new Date(agent.lastHeartbeat).toLocaleTimeString()}</span>
                 </div>
-                <div className="opacity-20">|</div>
-                <div>
+                <div className="hidden sm:block opacity-20">|</div>
+                <div className="flex items-center justify-between sm:justify-start">
                   <span className="opacity-50">Location:</span>
                   <span className="font-semibold ml-2">{agent.location}</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <label htmlFor="ai-insights-modal" className="btn btn-sm btn-ghost gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <label htmlFor="ai-insights-modal" className="btn btn-sm btn-ghost gap-2 flex-1 sm:flex-initial">
                   <Sparkles className="w-4 h-4" />
-                  AI Insights
+                  <span className="hidden sm:inline">AI Insights</span>
+                  <span className="sm:hidden">Insights</span>
                 </label>
 
-                <div className="dropdown dropdown-end">
-                  <label tabIndex={0} className="btn btn-sm btn-ghost gap-2">
+                <div className="dropdown dropdown-end flex-1 sm:flex-initial">
+                  <label tabIndex={0} className="btn btn-sm btn-ghost gap-2 w-full">
                     <Settings className="w-4 h-4" />
                     Actions
                   </label>
@@ -402,8 +404,8 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                         onClick={handleCacheCleanup}
                         disabled={isCleaningCache || agent.status !== "online"}
                         className={`text-sm flex items-center gap-2 ${agent.status !== "online"
-                            ? "opacity-60 cursor-not-allowed tooltip tooltip-bottom"
-                            : ""
+                          ? "opacity-60 cursor-not-allowed tooltip tooltip-bottom"
+                          : ""
                           }`}
                         data-tip={agent.status !== "online" ? "Agent is offline" : ""}
                       >
@@ -432,6 +434,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                   <ProcessListPopup
                     processes={processes}
                     agentId={agentId!}
+                    agentStatus={agent.status}
                     onClose={() => setShowProcesses(false)}
                   />
                 )}
@@ -443,21 +446,21 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
         {/* AI Insights Modal */}
         <input type="checkbox" id="ai-insights-modal" className="modal-toggle" />
         <div className="modal">
-          <div className="modal-box w-11/12 max-w-4xl">
+          <div className="modal-box w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-5 h-5 text-secondary" />
-                <div>
-                  <h3 className="font-bold text-lg">AI Daily Insights</h3>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Sparkles className="w-5 h-5 text-secondary flex-shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="font-bold text-base sm:text-lg">AI Daily Insights</h3>
                   {agent.insightDate && (
-                    <p className="text-xs opacity-60">
+                    <p className="text-xs opacity-60 truncate">
                       {new Date(agent.insightDate).toLocaleDateString()} at{" "}
                       {new Date(agent.insightDate).toLocaleTimeString()}
                     </p>
                   )}
                 </div>
               </div>
-              <label htmlFor="ai-insights-modal" className="btn btn-sm btn-circle btn-ghost">✕</label>
+              <label htmlFor="ai-insights-modal" className="btn btn-sm btn-circle btn-ghost flex-shrink-0">✕</label>
             </div>
             <div className="divider my-2"></div>
             <MarkdownRenderer content={agent.dailyinsights ?? "Error fetching AI Insights"} />
@@ -470,16 +473,16 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
 
         {/* Configuration */}
         <div className="card bg-base-200 border border-base-300">
-          <div className="card-body p-6">
+          <div className="card-body p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Configuration</h2>
+              <h2 className="text-base sm:text-lg font-bold">Configuration</h2>
               <AgentDeleteButton agentId={agent.id} />
             </div>
 
             <div className="space-y-3">
               <div className="p-3 bg-base-300/30 rounded-lg">
                 <div className="text-xs opacity-50 mb-1 uppercase tracking-wide">Agent ID</div>
-                <code className="text-sm font-mono">{agent.id}</code>
+                <code className="text-xs sm:text-sm font-mono break-all">{agent.id}</code>
               </div>
 
               {agent.token && (
@@ -501,7 +504,7 @@ export default function AgentDetailClient({ Agent, initialProcesses }: {
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-xs opacity-50 uppercase tracking-wide">Docker Command</div>
                       <button
-                        className="btn btn-ghost btn-xs gap-1"
+                        className="btn btn-ghost btn-xs gap-1 flex-shrink-0"
                         onClick={() => copyToClipboard(
                           `docker run -d --name ${agent.name} --privileged --pid=host -e AGENT_TOKEN="${agent.token}" -e AGENT_NAME="${agent.id}" etherealfrost019/opsentrix-agent:latest`,
                           'docker'

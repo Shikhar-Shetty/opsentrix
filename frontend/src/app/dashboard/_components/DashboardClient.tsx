@@ -65,11 +65,10 @@ const MetricCard = ({ label, value, icon }: { label: string; value: number; icon
       <div className="flex items-end gap-2">
         <span className={`text-2xl font-bold ${getColorClass(value)}`}>{value}%</span>
         <div className="flex-1 mb-1">
-          <progress 
-            className={`progress w-full h-1 ${
-              value >= 80 ? "progress-error" : value >= 60 ? "progress-warning" : "progress-success"
-            }`} 
-            value={value} 
+          <progress
+            className={`progress w-full h-1 ${value >= 80 ? "progress-error" : value >= 60 ? "progress-warning" : "progress-success"
+              }`}
+            value={value}
             max={100}
           />
         </div>
@@ -169,7 +168,7 @@ const AgentCard = ({ agent }: { agent: Agent }) => {
               <RelativeTime date={agent.lastHeartbeat} />
             </div>
           </div>
-          
+
           <div>
             <label className="text-xs font-medium text-base-content/70 uppercase tracking-wide block mb-1">
               Access Token
@@ -201,8 +200,8 @@ const CreateAgentModal = ({
   creatingAgentName: string
   creatingAgentId: string
 }) => {
-  const dockerCmd = creatingToken 
-    ? `docker run -d --name ${creatingAgentName} -e AGENT_TOKEN="${creatingToken}" -e AGENT_NAME="${creatingAgentId}" etherealfrost019/opsentrix-agent:latest`
+  const dockerCmd = creatingToken
+    ? `docker run -d --name ${creatingAgentName} -e AGENT_TOKEN="${creatingToken}" -e AGENT_NAME="${creatingAgentId}" --privileged --pid=host etherealfrost019/opsentrix-agent:latest`
     : ""
 
   const copyDockerCommand = async () => {
@@ -265,9 +264,9 @@ const CreateAgentModal = ({
               <button className="btn btn-ghost" onClick={onClose}>
                 Cancel
               </button>
-              <button 
-                className="btn btn-primary" 
-                onClick={onCreateAgent} 
+              <button
+                className="btn btn-primary"
+                onClick={onCreateAgent}
                 disabled={!newName.trim()}
               >
                 Create Agent
@@ -300,7 +299,7 @@ const CreateAgentModal = ({
                 </div>
                 <label className="label">
                   <span className="label-text-alt mt-1 text-sm text-warning">
-                    ⚠️ Store this token securely. It won't be shown again.
+                    ⚠️ Store this token securely. It won&apos;t be shown again.
                   </span>
                 </label>
               </div>
@@ -425,13 +424,13 @@ export default function DashboardClient({ initialAgents }: Props) {
                   <div className="stat-value text-sm">{totalAgents}</div>
                 </div>
               </div>
-              <button 
+              <button
                 className="btn btn-outline btn-sm"
                 onClick={() => setAgents([...agents])}
               >
                 Refresh
               </button>
-              <button 
+              <button
                 className="btn btn-primary btn-sm"
                 onClick={() => setCreating(true)}
               >
@@ -459,7 +458,7 @@ export default function DashboardClient({ initialAgents }: Props) {
               <p className="text-base-content/70 mb-6">
                 Get started by creating your first agent to monitor and manage your infrastructure.
               </p>
-              <button 
+              <button
                 className="btn btn-primary"
                 onClick={() => setCreating(true)}
               >

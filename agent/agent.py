@@ -19,17 +19,18 @@ sio = socketio.Client(reconnection=True, reconnection_attempts=0)
 
 @sio.event
 def connect():
-    print("[+] Connected to backend")
+    print("[+] Connected to backend", flush=True)
     # Register agent immediately
     sio.emit("register_agent", {
         "id": AGENT_NAME,
         "token": AGENT_TOKEN
     })
+    print(f"[+] Registered as agent: {AGENT_NAME}", flush=True)
     time.sleep(0.5)
 
 @sio.event
 def disconnect():
-    print("[-] Disconnected from backend")
+    print("[-] Disconnected from backend", flush=True)
 
 @sio.event
 def cleanup_command(data):
@@ -37,7 +38,7 @@ def cleanup_command(data):
     Backend sends cleanup command via Socket.IO
     No HTTP needed, no ports exposed!
     """
-    print("[Socket.IO] Received cleanup command:", data)
+    print("[Socket.IO] Received cleanup command:", data, flush=True)
     
     # Run cleanup
     result = run_cleanup()
@@ -49,7 +50,7 @@ def cleanup_command(data):
         "result": result
     })
     
-    print("[Socket.IO] Cleanup response sent")
+    print("[Socket.IO] Cleanup response sent", flush=True)
 
 
 def get_location():
@@ -78,7 +79,7 @@ def run_cleanup():
             check=True,
             timeout=30  # Add timeout
         )
-        print("[Cleanup] Success:\n", result.stdout)
+        print("[Cleanup] Success:\n", result.stdout, flush=True)
         
         # Try to parse last line as JSON
         last_line = result.stdout.strip().split("\n")[-1] if result.stdout else ""
@@ -89,17 +90,16 @@ def run_cleanup():
         
         return output_json
     except subprocess.TimeoutExpired:
-        print("[Cleanup] Timeout")
+        print("[Cleanup] Timeout", flush=True)
         return {"status": "error", "output": "Cleanup script timeout"}
     except subprocess.CalledProcessError as e:
-        print("[Cleanup] Error:\n", e.stderr)
+        print("[Cleanup] Error:\n", e.stderr, flush=True)
         return {"status": "error", "output": e.stderr or "Unknown error"}
 
 
 # ---------- System Metrics ----------
 def get_metrics():
     location = get_location()
-    print(f"location: {location}")
     return {
         "id": AGENT_NAME,
         "token": AGENT_TOKEN,
@@ -118,22 +118,22 @@ def send_metrics_loop():
         # Ensure connected
         if not sio.connected:
             try:
-                print("[>] Connecting to backend...")
+                print(f"[>] Connecting to backend at {BACKEND_URL}...", flush=True)
                 sio.connect(BACKEND_URL)
                 time.sleep(2)  # Wait for connection
             except Exception as e:
-                print(f"[!] Connection failed: {e}")
+                print(f"[!] Connection failed: {e}", flush=True)
                 time.sleep(5)
                 continue
         
         # Send metrics
         metrics = get_metrics()
-        print(f"[>] Sending metrics: CPU={metrics['CPU']:.1f}% MEM={metrics['memory']:.1f}%")
+        print(f"[>] Sending metrics: CPU={metrics['CPU']:.1f}% MEM={metrics['memory']:.1f}%", flush=True)
         
         try:
             sio.emit("agent_metrics", metrics)
         except Exception as e:
-            print(f"[!] Failed to emit metrics: {e}")
+            print(f"[!] Failed to emit metrics: {e}", flush=True)
         
         time.sleep(METRICS_INTERVAL)
 
@@ -169,11 +169,11 @@ def send_process_metrics_loop():
                 "agentId": AGENT_NAME,
                 "processes": top_procs
             }
-            print(f"[DEBUG] Sending payload: {json.dumps(payload, indent=2)}")
+            print(f"[>] Sending {len(top_procs)} process metrics", flush=True)
             sio.emit("process_metrics", payload)
-            print(f"[>] Sent {len(top_procs)} process metrics")
             time.sleep(METRICS_INTERVAL * 3)  # send less frequently
         else:
+            print("[!] Not connected, skipping process metrics", flush=True)
             time.sleep(5)
 
 

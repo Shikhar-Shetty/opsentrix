@@ -13,7 +13,7 @@ import {
   RadialBarChart,
   RadialBar,
 } from "recharts"
-import { Activity, HardDrive, Cpu, Database } from "lucide-react"
+import { HardDrive, Cpu, Database } from "lucide-react"
 
 type Agent = {
   id: string
@@ -38,23 +38,23 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
   const historicalData = parseSummary(agent?.summary)
 
   const currentMetrics = [
-    { 
-      name: "CPU", 
-      value: agent.CPU || 0, 
+    {
+      name: "CPU",
+      value: agent.CPU || 0,
       color: COLORS.cpu,
       icon: Cpu,
       unit: "%"
     },
-    { 
-      name: "Memory", 
-      value: agent.memory || 0, 
+    {
+      name: "Memory",
+      value: agent.memory || 0,
       color: COLORS.memory,
       icon: Database,
       unit: "%"
     },
-    { 
-      name: "Disk", 
-      value: agent.disk || 0, 
+    {
+      name: "Disk",
+      value: agent.disk || 0,
       color: COLORS.disk,
       icon: HardDrive,
       unit: "%"
@@ -62,21 +62,21 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
   ]
 
   const radialData = [
-    { 
-      name: "CPU", 
-      value: agent.CPU || 0, 
+    {
+      name: "CPU",
+      value: agent.CPU || 0,
       fill: COLORS.cpu,
       max: 100
     },
-    { 
-      name: "Memory", 
-      value: agent.memory || 0, 
+    {
+      name: "Memory",
+      value: agent.memory || 0,
       fill: COLORS.memory,
       max: 100
     },
-    { 
-      name: "Disk", 
-      value: agent.disk || 0, 
+    {
+      name: "Disk",
+      value: agent.disk || 0,
       fill: COLORS.disk,
       max: 100
     },
@@ -142,9 +142,9 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
 
                 <div className="space-y-1.5">
                   <div className="h-2 bg-base-300 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full rounded-full transition-all duration-300"
-                      style={{ 
+                      style={{
                         width: `${metric.value}%`,
                         backgroundColor: metric.color
                       }}
@@ -181,7 +181,7 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
                 ))}
               </div>
             </div>
-            
+
             <div className="h-64 ml-[-20px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={historicalData}>
@@ -256,14 +256,14 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
         <div className="card bg-base-200 border border-base-300">
           <div className="card-body p-5">
             <h3 className="text-sm font-bold mb-4">Resource Distribution</h3>
-            
+
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <RadialBarChart 
-                  cx="50%" 
-                  cy="50%" 
-                  innerRadius="30%" 
-                  outerRadius="90%" 
+                <RadialBarChart
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="30%"
+                  outerRadius="90%"
                   data={radialData}
                   startAngle={90}
                   endAngle={-270}
@@ -273,17 +273,19 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
                     dataKey="value"
                     cornerRadius={8}
                   />
-                  <Legend 
+                  <Legend
                     iconSize={10}
-                    layout="vertical" 
-                    verticalAlign="middle" 
+                    layout="vertical"
+                    verticalAlign="middle"
                     align="right"
                     wrapperStyle={{
                       fontSize: "11px"
                     }}
-                    formatter={(value, entry: any) => {
-                      const displayValue = typeof entry?.payload?.value === 'number' 
-                        ? entry.payload.value.toFixed(1) 
+                    formatter={(value, entry: unknown) => {
+                      const typedEntry = entry as { payload?: { value?: number } };
+                      const val = typedEntry?.payload?.value;
+                      const displayValue = typeof val === 'number'
+                        ? val.toFixed(1)
                         : '0.0'
                       return `${value}: ${displayValue}%`
                     }}

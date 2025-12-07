@@ -8,10 +8,10 @@ export default function LandingPage() {
       <div className="relative overflow-hidden">
         {/* Animated gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 animate-pulse" style={{ animationDuration: '8s' }}></div>
-        
+
         {/* Decorative grid */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,theme(colors.base-content/0.03)_1px,transparent_1px),linear-gradient(to_bottom,theme(colors.base-content/0.03)_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
-        
+
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8 pt-20 sm:pt-32 pb-24">
           <div className="text-center max-w-4xl mx-auto">
             {/* Badge */}
@@ -206,7 +206,7 @@ export default function LandingPage() {
               Built for Modern Infrastructure
             </h2>
             <p className="text-lg sm:text-xl text-base-content/70 mb-8 leading-relaxed">
-              Whether you're running a single server or managing thousands of nodes across multiple regions, OpSentrix scales effortlessly with your infrastructure.
+              Whether you&apos;re running a single server or managing thousands of nodes across multiple regions, OpSentrix scales effortlessly with your infrastructure.
             </p>
             <div className="space-y-5">
               <div className="flex items-start gap-4 group">
@@ -255,8 +255,8 @@ export default function LandingPage() {
                 <div className="mockup-code bg-base-100 text-sm">
                   <pre data-prefix="$" className="text-neutral"><code className="text-neutral">docker run -d \</code></pre>
                   <pre data-prefix=""><code className="text-neutral">  --name opsentrix-agent \</code></pre>
-                  <pre data-prefix=""><code className="text-neutral">  -e AGENT_TOKEN="sk_..." \</code></pre>
-                  <pre data-prefix=""><code className="text-neutral">  -e AGENT_NAME="prod-srv-01" \</code></pre>
+                  <pre data-prefix=""><code className="text-neutral">  -e AGENT_TOKEN=&quot;sk_...&quot; \</code></pre>
+                  <pre data-prefix=""><code className="text-neutral">  -e AGENT_NAME=&quot;prod-srv-01&quot; \</code></pre>
                   <pre data-prefix=""><code className="text-neutral">  etherealfrost019/opsentrix-agent</code></pre>
                   <pre data-prefix=">" className="text-success"><code>Agent deployed successfully!</code></pre>
                 </div>
