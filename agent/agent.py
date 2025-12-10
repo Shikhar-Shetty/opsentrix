@@ -9,10 +9,10 @@ import uvicorn
 import json
 import requests
 
-# ---------- ENV ----------
+
 AGENT_NAME = os.getenv("AGENT_NAME", "agt_dd104ead27ed")
 AGENT_TOKEN = os.getenv("AGENT_TOKEN", "tok_855d4c314b09d97299618165")
-BACKEND_URL = os.getenv("BACKEND_URL", "https://opsentrix.onrender.com/") # http://host.docker.internal:4000, If running Backend in local and the agent in Docker.
+BACKEND_URL = os.getenv("BACKEND_URL", "https://opsentrix.onrender.com/") 
 METRICS_INTERVAL = int(os.getenv("METRICS_INTERVAL", 10))
 
 sio = socketio.Client(reconnection=True, reconnection_attempts=0)
@@ -20,7 +20,7 @@ sio = socketio.Client(reconnection=True, reconnection_attempts=0)
 @sio.event
 def connect():
     print("[+] Connected to backend", flush=True)
-    # Register agent immediately
+    
     sio.emit("register_agent", {
         "id": AGENT_NAME,
         "token": AGENT_TOKEN
@@ -40,13 +40,13 @@ def cleanup_command(data):
     """
     print("[Socket.IO] Received cleanup command:", data, flush=True)
     
-    # Run cleanup
+    
     result = run_cleanup()
     
-    # Send result back via Socket.IO
+    
     sio.emit("cleanup_response", {
         "agentId": AGENT_NAME,
-        "requestId": data.get("requestId"),  # Track which request this is for
+        "requestId": data.get("requestId"),  
         "result": result
     })
     
@@ -63,7 +63,7 @@ def get_location():
         return "Unknown:Unknown:Unknown"
     
 
-# ---------- Cleanup Function ----------
+
 def run_cleanup():
     """Runs cleanup.sh safely and returns structured JSON"""
     script_path = os.path.join(os.getcwd(), "cleanup.sh")
@@ -77,11 +77,11 @@ def run_cleanup():
             capture_output=True,
             text=True,
             check=True,
-            timeout=30  # Add timeout
+            timeout=30  
         )
         print("[Cleanup] Success:\n", result.stdout, flush=True)
         
-        # Try to parse last line as JSON
+        
         last_line = result.stdout.strip().split("\n")[-1] if result.stdout else ""
         try:
             output_json = json.loads(last_line)
@@ -97,7 +97,7 @@ def run_cleanup():
         return {"status": "error", "output": e.stderr or "Unknown error"}
 
 
-# ---------- System Metrics ----------
+
 def get_metrics():
     location = get_location()
     return {
@@ -115,18 +115,18 @@ def get_metrics():
 def send_metrics_loop():
     """Continuously send metrics via Socket.IO"""
     while True:
-        # Ensure connected
+        
         if not sio.connected:
             try:
                 print(f"[>] Connecting to backend at {BACKEND_URL}...", flush=True)
                 sio.connect(BACKEND_URL)
-                time.sleep(2)  # Wait for connection
+                time.sleep(2)  
             except Exception as e:
                 print(f"[!] Connection failed: {e}", flush=True)
                 time.sleep(5)
                 continue
         
-        # Send metrics
+        
         metrics = get_metrics()
         print(f"[>] Sending metrics: CPU={metrics['CPU']:.1f}% MEM={metrics['memory']:.1f}%", flush=True)
         
@@ -138,7 +138,7 @@ def send_metrics_loop():
         time.sleep(METRICS_INTERVAL)
 
 
-# ---------- Process Metrics ----------
+
 def get_top_processes(limit=10):
     """Return top processes by CPU usage"""
     processes = []
@@ -155,7 +155,7 @@ def get_top_processes(limit=10):
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
     
-    # Sort by CPU usage descending
+    
     processes.sort(key=lambda p: p['cpuUsage'], reverse=True)
     return processes[:limit]
 
@@ -171,7 +171,7 @@ def send_process_metrics_loop():
             }
             print(f"[>] Sending {len(top_procs)} process metrics", flush=True)
             sio.emit("process_metrics", payload)
-            time.sleep(METRICS_INTERVAL * 3)  # send less frequently
+            time.sleep(METRICS_INTERVAL * 3)  
         else:
             print("[!] Not connected, skipping process metrics", flush=True)
             time.sleep(5)
@@ -189,7 +189,7 @@ def kill_process(data):
         })
 
     try:
-        # Check if process exists first
+        
         if not psutil.pid_exists(pid):
             return sio.emit("process_kill_response", {
                 "agentId": AGENT_NAME,
@@ -201,13 +201,13 @@ def kill_process(data):
         proc = psutil.Process(pid)
         name = proc.name()
         
-        # Check if we have permission BEFORE attempting to kill
+        
         try:
-            # Test access by checking process status
+            
             _ = proc.status()
             _ = proc.username()
         except psutil.AccessDenied:
-            # We don't have permission to even inspect this process
+            
             return sio.emit("process_kill_response", {
                 "agentId": AGENT_NAME,
                 "status": "error",
@@ -216,10 +216,10 @@ def kill_process(data):
                 "permissionDenied": True
             })
         
-        # Try graceful termination
+        
         proc.terminate()
         
-        # Wait for process to terminate (max 5 seconds)
+        
         try:
             proc.wait(timeout=5)
             msg = f"Successfully terminated {name} (PID: {pid})"
@@ -231,7 +231,7 @@ def kill_process(data):
                 "pid": pid
             })
         except psutil.TimeoutExpired:
-            # Force kill if graceful termination failed
+            
             print(f"[!] Process {pid} didn't terminate gracefully, force killing...")
             proc.kill()
             proc.wait(timeout=2)
@@ -269,7 +269,7 @@ def kill_process(data):
             "pid": pid
         })
         
-# ---------- Optional FastAPI for local debugging ----------
+
 app = FastAPI(title="Opsentrix Agent API")
 
 @app.get("/health")
@@ -287,9 +287,9 @@ async def local_cleanup():
     return run_cleanup()
 
 
-# ---------- MAIN ----------
+
 if __name__ == "__main__":
-    psutil.cpu_percent(interval=1)  # pre-warm CPU
+    psutil.cpu_percent(interval=1)  
 
     print(f"╔══════════════════════════════════════╗")
     print(f"║     OPSENTRIX AGENT STARTING         ║")
@@ -298,14 +298,14 @@ if __name__ == "__main__":
     print(f"║ Backend:  {BACKEND_URL[:20]:<20}     ║")
     print(f"╚══════════════════════════════════════╝\n")
 
-    # Start threads
+    
     metrics_thread = threading.Thread(target=send_metrics_loop, daemon=True)
     metrics_thread.start()
 
     process_thread = threading.Thread(target=send_process_metrics_loop, daemon=True)
     process_thread.start()
 
-    # Optional local debug API
+    
     ENABLE_LOCAL_API = os.getenv("ENABLE_LOCAL_API", "false").lower() == "true"
     if ENABLE_LOCAL_API:
         print("[*] Local API enabled on port 5000 (for debugging)")
