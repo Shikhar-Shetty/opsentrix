@@ -51,3 +51,5 @@ next-env.d.ts
 
 bun.lock
 package-lock.json
+
+/k8s/*-secrets.yaml

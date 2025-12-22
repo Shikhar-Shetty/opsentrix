@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: opfrontend-deployment
+  namespace: opsentrix
+
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: opfrontend
+  template:
+    metadata:
+      name: opfrontend-pod
+      namespace: opsentrix
+      labels:
+        app: opfrontend
+    spec:
+      containers:
+        - name: opsentrix-frontend
+          image: etherealfrost019/opsentrix-frontend:latest
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+          ports:
+            - containerPort: 3000
