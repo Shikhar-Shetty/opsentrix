@@ -32,4 +32,4 @@ spec:
           envFrom:
             - secretRef:
                 name: opbackend-secrets
-                
+          imagePullPolicy: Always
