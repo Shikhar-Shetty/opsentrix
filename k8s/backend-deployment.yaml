@@ -29,3 +29,7 @@ spec:
               memory: "64Mi"
           ports:
             - containerPort: 4000
+          envFrom:
+            - secretRef:
+                name: opbackend-secrets
+                
