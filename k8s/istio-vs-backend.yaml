@@ -1,0 +1,22 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+
+metadata:
+  name: opsentrix-vs-backend
+  namespace: opsentrix
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - opsentrix-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/telemetry"
+    - uri:
+        prefix: "/socket.io"
+    route:
+    - destination:
+        host: opservice-backend
+        port:
+          number: 4000

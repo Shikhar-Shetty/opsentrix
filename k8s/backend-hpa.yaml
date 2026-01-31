@@ -1,0 +1,21 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+
+metadata:
+  name: opbackend-hpa
+  namespace: opsentrix
+  
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: opbackend-deployment
+  minReplicas: 2               # minimum pods
+  maxReplicas: 5               # maximum pods
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60   # scale up if avg CPU > 60%

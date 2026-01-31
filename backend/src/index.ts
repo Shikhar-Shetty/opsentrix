@@ -19,6 +19,9 @@ app.use(cors());
 app.use(express.json());
 app.use("/", telemetryRouter);
 
+app.get('/healthz', (req, res) => res.sendStatus(200));
+app.get('/ready', (req, res) => res.sendStatus(200));
+
 cron.schedule("0 */2 * * *", async () => {
   console.log("[Cron] Storing latest agent metrics to DB...");
   for (const agentId in agentLatestMetrics) {
