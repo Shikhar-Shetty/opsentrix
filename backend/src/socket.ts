@@ -1,7 +1,8 @@
 import { Server, Socket } from "socket.io";
-import axios from "axios";
 import "dotenv/config";
 import { checkAndSendAlert } from "./utils/alert.ts";
+import prisma from "./prisma/client.ts";
+import { metricAgentService, storeProcessMetricsService, GenerateProcessInsightsService } from "./controllers/agentController.ts";
 
 export const agentLatestMetrics: Record<string, any> = {};
 export const agentLastHeartbeat: Record<string, number> = {};
@@ -14,36 +15,51 @@ const pendingCleanups: Record<string, {
   timeout: NodeJS.Timeout;
 }> = {};
 
-const agentTimeout = 10000;
+const agentTimeout = 45000; 
 export const agentLastProcessStore: Record<string, number> = {};
+export const agentLastAIAnalysis: Record<string, number> = {};
 
 export function initSocket(io: Server) {
   io.on("connection", (socket) => {
-    console.log(`[Socket] New connection from ${socket.handshake.address}`);
+    // console.log(`[Socket] New connection from ${socket.handshake.address}`);
 
-    socket.on("register_agent", (data) => {
+    socket.on("register_agent", async (data) => {
       const agentId = data.id;
-      console.log(`[Agent Registered] ${agentId}`);
+      // console.log(`[Agent Register Request] ${agentId}`);
 
-      connectedAgents[agentId] = socket;
-      socket.data.agentId = agentId;
-      socket.data.token = data.token;
+      try {
+        const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+        if (!agent || agent.token !== data.token) {
+          console.log(`[Auth Failed] Agent ${agentId} used invalid token or does not exist.`);
+          socket.emit("error", { message: "Authentication failed" });
+          socket.disconnect();
+          return;
+        }
+
+        console.log(`[Agent Authenticated] ${agentId}`);
+        connectedAgents[agentId] = socket;
+        socket.data.agentId = agentId;
+        socket.data.token = data.token;
+      } catch (err) {
+        console.error(`[Auth Error] ${agentId}:`, err);
+        socket.disconnect();
+      }
     });
 
     socket.on("agent_metrics", async (data) => {
       const agentId = data.id;
+      if (!socket.data.agentId) return; 
 
       agentLatestMetrics[agentId] = data;
       agentLastHeartbeat[agentId] = Date.now();
 
       if (!connectedAgents[agentId]) {
         connectedAgents[agentId] = socket;
-        socket.data.agentId = agentId;
       }
 
       await checkAndSendAlert(agentId);
 
-      console.log(`[Metrics] ${agentId} | CPU: ${data.CPU.toFixed(1)}% | MEM: ${data.memory.toFixed(1)}%`);
+      // console.log(`[Metrics] ${agentId} | CPU: ${data.CPU.toFixed(1)}% | MEM: ${data.memory.toFixed(1)}%`);
 
       io.emit("agent_update", {
         id: agentId,
@@ -60,9 +76,8 @@ export function initSocket(io: Server) {
 
       if (!socket.data.firstStored) {
         try {
-          await axios.post(`${process.env.BASE_URL}/telemetry`, data);
-          await axios.post(`${process.env.BASE_URL}/telemetry/insights`, { id: agentId });
-          await axios.post(`${process.env.BASE_URL}/telemetry/process/insights`, { id: agentId });
+          await metricAgentService(data);
+          // await GenerateProcessInsightsService(agentId); // Optional on first connect
           console.log(`[DB] Stored first metrics for ${agentId}`);
           socket.data.firstStored = true;
         } catch (err: any) {
@@ -74,6 +89,8 @@ export function initSocket(io: Server) {
 
     socket.on("process_metrics", async (data) => {
       const agentId = data.agentId;
+      if (!socket.data.agentId) return;
+
       console.log(`[Process Metrics] from ${agentId} (${data.processes.length} processes)`);
 
       const enrichedProcesses = await enrichProcessesWithAI(agentId, data.processes);
@@ -85,16 +102,29 @@ export function initSocket(io: Server) {
 
       const now = Date.now();
       const lastStore = agentLastProcessStore[agentId] || 0;
-      const STORE_INTERVAL = 120000;
+      const STORE_INTERVAL = 120000; // 2 minutes for DB
+      const AI_INTERVAL = 1000 * 60 * 60 * 4; // 4 hours for AI (Quota protection)
 
       if (now - lastStore > STORE_INTERVAL) {
         try {
-          await axios.post(`${process.env.BASE_URL}/telemetry/process`, data);
+          await storeProcessMetricsService(agentId, data.processes);
           console.log(`[DB] Stored process metrics for ${agentId}`);
           agentLastProcessStore[agentId] = now;
 
-          await axios.post(`${process.env.BASE_URL}/telemetry/process/insights`, { id: agentId });
-          console.log(`[AI] Triggered insights generation for ${agentId}`);
+          const lastAI = agentLastAIAnalysis[agentId] || 0;
+          if (now - lastAI > AI_INTERVAL) {
+            try {
+              await GenerateProcessInsightsService(agentId);
+              console.log(`[AI] Generated fresh insights for ${agentId}`);
+              agentLastAIAnalysis[agentId] = now;
+            } catch (aiErr: any) {
+              if (aiErr.message?.includes("429") || aiErr.message?.includes("quota")) {
+                console.warn(`[AI Quota] Rate limit hit for ${agentId}. Skipping analysis.`);
+              } else {
+                console.error(`[AI Error] ${agentId}:`, aiErr.message);
+              }
+            }
+          }
         } catch (err: any) {
           console.error(`[DB Error] ${agentId}: ${err.message}`);
         }
@@ -103,15 +133,22 @@ export function initSocket(io: Server) {
 
     async function enrichProcessesWithAI(agentId: string, realtimeProcesses: any[]) {
       try {
-        const response = await axios.get(
-          `${process.env.BASE_URL}/telemetry/process/ai-cache/${agentId}`,
-          { timeout: 3000 }
-        );
-
-        const storedProcesses = response.data || [];
+        const storedProcesses = await prisma.processMetrics.findMany({
+          where: {
+            agentId,
+            aiFlag: { not: "unknown" }
+          },
+          orderBy: { createdAt: "desc" },
+          distinct: ['processName'],
+          select: {
+            processName: true,
+            aiFlag: true,
+            aiReason: true,
+          }
+        });
 
         if (storedProcesses.length === 0) {
-          console.log(`[Enrich] No AI cache found for ${agentId}, showing as unknown`);
+          // console.log(`[Enrich] No AI cache found for ${agentId}, showing as unknown`);
           return realtimeProcesses.map(p => ({
             ...p,
             aiFlag: "unknown",
@@ -131,8 +168,6 @@ export function initSocket(io: Server) {
           }
         });
 
-        console.log(`[Enrich] Mapped ${aiMap.size} processes for ${agentId}`);
-
         const enriched = realtimeProcesses.map(p => {
           const key = p.processName?.toLowerCase()?.trim();
           const aiData = key ? aiMap.get(key) : null;
@@ -143,9 +178,6 @@ export function initSocket(io: Server) {
             aiReason: aiData?.aiReason || "Not yet analyzed"
           };
         });
-
-        const matchedCount = enriched.filter(p => p.aiFlag !== "unknown").length;
-        console.log(`[Enrich] Matched ${matchedCount}/${enriched.length} processes with AI data`);
 
         return enriched;
 
@@ -168,7 +200,7 @@ export function initSocket(io: Server) {
       agentSocket.emit("kill_process", { pid });
     });
 
-    socket.on("process_kill_response", (data) => {
+    socket.on("process_kill_result", (data) => {
       console.log(`[Kill Response] Agent ${socket.data.agentId}:`, data);
       io.emit("process_kill_result", data);
     });
@@ -190,18 +222,18 @@ export function initSocket(io: Server) {
 
       if (agentId) {
         delete connectedAgents[agentId];
+        delete agentLatestMetrics[agentId];
+        delete agentLastHeartbeat[agentId];
 
-        if (agentLatestMetrics[agentId]) {
-          try {
-            await axios.post(`${process.env.BASE_URL}/telemetry`, {
-              ...agentLatestMetrics[agentId],
-              status: "offline",
-              lastHeartbeat: new Date().toISOString(),
-            });
-            console.log(`[DB] Marked ${agentId} as offline`);
-          } catch (err) {
-            console.error(`[DB Error] Failed to update ${agentId} status:`, err);
-          }
+        // Directly update DB - don't rely on in-memory state
+        try {
+          await prisma.agent.update({
+            where: { id: agentId },
+            data: { status: "offline" }
+          });
+          console.log(`[DB] Marked ${agentId} as offline`);
+        } catch (err) {
+          console.error(`[DB Error] Failed to update ${agentId} status:`, err);
         }
       }
     });
@@ -217,17 +249,17 @@ export function initSocket(io: Server) {
       if (diff > agentTimeout) {
         console.log(`[Timeout] Agent ${agentId} (last seen ${Math.round(diff / 1000)}s ago)`);
 
-        if (agentLatestMetrics[agentId]) {
-          try {
-            await axios.post(`${process.env.BASE_URL}/telemetry`, {
-              ...agentLatestMetrics[agentId],
-              status: "offline",
-              lastHeartbeat: new Date().toISOString(),
-            });
-          } catch (err: any) {
-            console.error(`[Timeout DB Error] ${agentId}: ${err.message}`);
-          }
+        // Directly update DB - don't rely on in-memory state
+        try {
+          await prisma.agent.update({
+            where: { id: agentId },
+            data: { status: "offline" }
+          });
+          console.log(`[DB] Marked ${agentId} as offline (timeout)`);
+        } catch (err: any) {
+          console.error(`[Timeout DB Error] ${agentId}: ${err.message}`);
         }
+
         delete agentLatestMetrics[agentId];
         delete agentLastHeartbeat[agentId];
         delete connectedAgents[agentId];

@@ -161,106 +161,53 @@ export const getAgentStatus = async (req: Request, res: Response) => {
   });
 };
 
+// --- SERVICE LAYER FOR INTERNAL USE ---
 
-export const metricAgent = async (req: Request, res: Response) => {
-  const agentData = req.body;
+export const metricAgentService = async (agentData: any) => {
+  const agent = await prisma.agent.findUnique({ where: { id: agentData.id } });
 
-  try {
-    const agent = await prisma.agent.findUnique({ where: { id: agentData.id } });
+  if (!agent) throw new Error("No Agent Found");
+  if (agent.token !== agentData.token) throw new Error("Invalid Token");
 
-    if (!agent) return res.status(404).json({ error: "No Agent Found. Try Again" });
-    if (agent.token !== agentData.token) return res.status(403).json({ error: "Invalid Token" });
+  let newSummary: string = `\n${new Date().toISOString()}: Memory: ${agentData.memory}%, Disk: ${agentData.disk}%, CPU: ${agentData.CPU}%, Processes: ${agentData.processes}, Status: ${agentData.status}`;
+  let summary: string = (agent.summary ?? '') + newSummary;
+  // console.log("Summary:", summary); // Too spammy for cron
 
-    let newSummary: string = `\n${new Date().toISOString()}: Memory: ${agentData.memory}%, Disk: ${agentData.disk}%, CPU: ${agentData.CPU}%, Processes: ${agentData.processes}, Status: ${agentData.status}`;
-    let summary: string = (agent.summary ?? '') + newSummary;
-    console.log("Summary:", summary);
+  const updatedAgent = await prisma.agent.update({
+    where: { id: agentData.id },
+    data: {
+      memory: agentData.memory,
+      disk: agentData.disk,
+      CPU: agentData.CPU,
+      lastHeartbeat: new Date(),
+      status: agentData.status,
+      location: agentData.location,
+      processes: agentData.processes,
+      summary: summary
+    },
+  });
 
-    const updatedAgent = await prisma.agent.update({
-      where: { id: agentData.id },
-      data: {
-        memory: agentData.memory,
-        disk: agentData.disk,
-        CPU: agentData.CPU,
-        lastHeartbeat: new Date(),
-        status: agentData.status,
-        location: agentData.location,
-        processes: agentData.processes,
-        summary: summary
-      },
-    });
-
-    console.log("Updated agent:", updatedAgent);
-    return res.json(updatedAgent);
-  } catch (error) {
-    console.error("Error while sending metrics:", error);
-    return res.status(500).json({ error: "Server error" });
-  }
+  return updatedAgent;
 };
 
+export const GenerateProcessInsightsService = async (agentId: string) => {
+  const processes = await prisma.processMetrics.findMany({
+    where: { agentId },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    distinct: ['processName'],
+  });
 
-export const StoreProcessMetrics = async (req: any, res: any) => {
-  try {
-    const { agentId, processes } = req.body;
+  if (processes.length === 0) throw new Error("No process data found for this agent");
 
-    if (!agentId || !processes || !Array.isArray(processes)) {
-      return res.status(400).json({
-        error: "Missing agentId or processes array"
-      });
-    }
+  const processSummary = processes
+    .map(
+      (p) =>
+        `${p.processName} (PID: ${p.pid}) — CPU: ${p.cpuUsage}%, MEM: ${p.memoryUsage}%, STATUS: ${p.status}`
+    )
+    .join("\n");
 
-    const processData = processes.map(proc => ({
-      agentId: agentId,
-      processName: proc.processName || "unknown",
-      pid: proc.pid,
-      cpuUsage: proc.cpuUsage || 0.0,
-      memoryUsage: proc.memoryUsage || 0.0,
-      status: proc.status || "unknown",
-    }));
-
-    const result = await prisma.processMetrics.createMany({
-      data: processData,
-      skipDuplicates: true
-    });
-
-    console.log(`[DB] Stored ${result.count} process metrics for ${agentId}`);
-
-    return res.status(200).json({
-      success: true,
-      stored: result.count,
-    });
-
-  } catch (error: any) {
-    console.error("[StoreProcessMetrics Error]", error);
-    return res.status(500).json({
-      error: "Failed to store process metrics",
-      details: error.message
-    });
-  }
-};
-
-export const GenerateProcessInsights = async (req: Request, res: Response) => {
-  try {
-    const agentId = req.body.id;
-    if (!agentId) return res.status(400).json({ error: "Agent ID missing" });
-
-    const processes = await prisma.processMetrics.findMany({
-      where: { agentId },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-      distinct: ['processName'],
-    });
-
-    if (processes.length === 0)
-      return res.status(404).json({ error: "No process data found for this agent" });
-
-    const processSummary = processes
-      .map(
-        (p) =>
-          `${p.processName} (PID: ${p.pid}) — CPU: ${p.cpuUsage}%, MEM: ${p.memoryUsage}%, STATUS: ${p.status}`
-      )
-      .join("\n");
-
-    const prompt = `
+  const prompt = `
 You are a Linux system process analyst. Analyze these processes and determine safety FOR TERMINATION.
 
 CRITICAL RULES FOR SAFE FLAG:
@@ -293,47 +240,120 @@ Process 123: Kernel thread, never terminate. Flag: unsafe
 ${processSummary}
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt,
+  });
+
+  const text = response?.text?.trim();
+  if (!text) throw new Error("AI returned no content");
+
+  let updatedCount = 0;
+
+  for (const p of processes) {
+    const regex = new RegExp(`Process\\s*${p.pid}[:\\-]?\\s*(.*?)(?:Flag:\\s*(safe|unsafe))`, "i");
+    const match = text.match(regex);
+
+    const reason = match?.[1]?.trim() || "Standard system process";
+    const flag = match?.[2]?.trim()?.toLowerCase() || "safe"; // Default to SAFE
+
+    await prisma.processMetrics.updateMany({
+      where: {
+        agentId,
+        processName: p.processName
+      },
+      data: {
+        aiReason: reason,
+        aiFlag: flag,
+      },
     });
 
-    const text = response?.text?.trim();
-    if (!text) return res.status(400).json({ error: "AI returned no content" });
+    updatedCount++;
+  }
 
-    let updatedCount = 0;
+  // console.log(`[AI] Generated insights for ${updatedCount} unique processes (${agentId})`);
+  return {
+    success: true,
+    message: "Process insights updated successfully",
+    analyzedCount: updatedCount,
+    rawInsights: text,
+  };
+};
 
-    for (const p of processes) {
-      const regex = new RegExp(`Process\\s*${p.pid}[:\\-]?\\s*(.*?)(?:Flag:\\s*(safe|unsafe))`, "i");
-      const match = text.match(regex);
+// --- CONTROLLERS ---
 
-      const reason = match?.[1]?.trim() || "Standard system process";
-      const flag = match?.[2]?.trim()?.toLowerCase() || "safe"; // Default to SAFE
+export const metricAgent = async (req: Request, res: Response) => {
+  try {
+    const updatedAgent = await metricAgentService(req.body);
+    // console.log("Updated agent:", updatedAgent);
+    return res.json(updatedAgent);
+  } catch (error: any) {
+    if (error.message === "No Agent Found" || error.message === "Invalid Token") {
+      return res.status(403).json({ error: error.message });
+    }
+    console.error("Error while sending metrics:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
 
-      await prisma.processMetrics.updateMany({
-        where: {
-          agentId,
-          processName: p.processName
-        },
-        data: {
-          aiReason: reason,
-          aiFlag: flag,
-        },
+
+export const storeProcessMetricsService = async (agentId: string, processes: any[]) => {
+  const processData = processes.map(proc => ({
+    agentId: agentId,
+    processName: proc.processName || "unknown",
+    pid: proc.pid,
+    cpuUsage: proc.cpuUsage || 0.0,
+    memoryUsage: proc.memoryUsage || 0.0,
+    status: proc.status || "unknown",
+  }));
+
+  const result = await prisma.processMetrics.createMany({
+    data: processData,
+    skipDuplicates: true
+  });
+
+  return result.count;
+};
+
+export const StoreProcessMetrics = async (req: any, res: any) => {
+  try {
+    const { agentId, processes } = req.body;
+
+    if (!agentId || !processes || !Array.isArray(processes)) {
+      return res.status(400).json({
+        error: "Missing agentId or processes array"
       });
-
-      updatedCount++;
     }
 
-    console.log(`[AI] Generated insights for ${updatedCount} unique processes (${agentId})`);
-    return res.json({
+    const count = await storeProcessMetricsService(agentId, processes);
+
+    console.log(`[DB] Stored ${count} process metrics for ${agentId}`);
+
+    return res.status(200).json({
       success: true,
-      message: "Process insights updated successfully",
-      analyzedCount: updatedCount,
-      rawInsights: text,
+      stored: count,
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    console.error("[StoreProcessMetrics Error]", error);
+    return res.status(500).json({
+      error: "Failed to store process metrics",
+      details: error.message
+    });
+  }
+};
+
+export const GenerateProcessInsights = async (req: Request, res: Response) => {
+  try {
+    const agentId = req.body.id;
+    if (!agentId) return res.status(400).json({ error: "Agent ID missing" });
+
+    const result = await GenerateProcessInsightsService(agentId);
+    return res.json(result);
+
+  } catch (error: any) {
     console.error("[GenerateProcessInsights Error]", error);
+    if (error.message.includes("No process data")) return res.status(404).json({ error: error.message });
     return res.status(500).json({ error: "Failed to generate process insights" });
   }
 };

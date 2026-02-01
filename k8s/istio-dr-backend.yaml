@@ -9,14 +9,16 @@ spec:
   host: opservice-backend
   trafficPolicy:
     loadBalancer:
-      simple: ROUND_ROBIN
+      consistentHash:
+        useSourceIp: true
 
     connectionPool:
       tcp:
         maxConnections: 50
       http:
         http1MaxPendingRequests: 30
-        maxRequestsPerConnection: 5
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 0  # Unlimited for WebSocket
 
     outlierDetection:
       consecutive5xxErrors: 5

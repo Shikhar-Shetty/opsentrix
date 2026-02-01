@@ -1,4 +1,3 @@
-
 "use client"
 
 import {
@@ -83,6 +82,8 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
   ]
 
   function parseSummary(summary: string) {
+    if (!summary) return [];
+
     return summary
       .trim()
       .split('\n')
@@ -93,6 +94,7 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
         if (!match) return null
         const date = new Date(match[1])
         return {
+          timestamp: date.getTime(),
           time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
           memory: parseFloat(match[2]),
           disk: parseFloat(match[3]),
@@ -101,7 +103,9 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
           status: match[6],
         }
       })
-      .filter(Boolean)
+      .filter((item): item is NonNullable<typeof item> => Boolean(item))
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-50); // Keep last 50 data points for performance
   }
 
   const getStatusColor = (value: number) => {
@@ -118,7 +122,7 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
 
   return (
     <div className="space-y-4">
-      {}
+      {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {currentMetrics.map((metric, idx) => {
           const Icon = metric.icon
@@ -161,9 +165,9 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
         })}
       </div>
 
-      {}
+      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {}
+        {/* Main Area Chart */}
         <div className="lg:col-span-2 card bg-base-200 border border-base-300">
           <div className="card-body p-5">
             <div className="flex items-center justify-between mb-4">
@@ -201,11 +205,18 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                   <XAxis
-                    dataKey="time"
+                    dataKey="timestamp"
+                    type="number"
+                    domain={['dataMin', 'dataMax']}
+                    tickFormatter={(timestamp) => new Date(timestamp).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    })}
                     tick={{ fontSize: 10, fill: "#9ca3af" }}
                     stroke="#4b5563"
-                    interval={3}
                     tickLine={false}
+                    minTickGap={30}
                   />
                   <YAxis
                     tick={{ fontSize: 10, fill: "#9ca3af" }}
@@ -214,6 +225,7 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
                     domain={[0, 100]}
                   />
                   <Tooltip
+                    labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
                     contentStyle={{
                       backgroundColor: "rgba(17, 24, 39, 0.95)",
                       border: "1px solid #374151",
@@ -252,7 +264,7 @@ export default function AgentMetricsCharts({ agent }: { agent: Agent }) {
           </div>
         </div>
 
-        {}
+        {/* Radial Chart */}
         <div className="card bg-base-200 border border-base-300">
           <div className="card-body p-5">
             <h3 className="text-sm font-bold mb-4">Resource Distribution</h3>

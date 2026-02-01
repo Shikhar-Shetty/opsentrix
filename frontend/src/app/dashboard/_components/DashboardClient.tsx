@@ -201,7 +201,7 @@ const CreateAgentModal = ({
   creatingAgentId: string
 }) => {
   const dockerCmd = creatingToken
-    ? `docker run -d --name ${creatingAgentName} -e AGENT_TOKEN="${creatingToken}" -e AGENT_NAME="${creatingAgentId}" --privileged --pid=host etherealfrost019/opsentrix-agent:latest`
+    ? `docker run -d --name ${creatingAgentName} --network host -e AGENT_TOKEN="${creatingToken}" -e AGENT_NAME="${creatingAgentId}" --privileged --pid=host etherealfrost019/opsentrix-agent:latest`
     : ""
 
   const copyDockerCommand = async () => {

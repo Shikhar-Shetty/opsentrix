@@ -10,12 +10,19 @@ import json
 import requests
 
 
-AGENT_NAME = os.getenv("AGENT_NAME", "agt_dd104ead27ed")
-AGENT_TOKEN = os.getenv("AGENT_TOKEN", "tok_855d4c314b09d97299618165")
+AGENT_NAME = os.getenv("AGENT_NAME", "agt_e2ac85e0fb72")
+AGENT_TOKEN = os.getenv("AGENT_TOKEN", "tok_c644db94546b3877710b4d19")
 BACKEND_URL = os.getenv("BACKEND_URL", "https://opsentrix.onrender.com/") 
+# BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:4000/")
 METRICS_INTERVAL = int(os.getenv("METRICS_INTERVAL", 10))
 
-sio = socketio.Client(reconnection=True, reconnection_attempts=0)
+# Enable Debug Logging
+sio = socketio.Client(
+    reconnection=True, 
+    reconnection_attempts=0, 
+    logger=True, 
+    engineio_logger=True
+)
 
 @sio.event
 def connect():
@@ -81,11 +88,20 @@ def run_cleanup():
         )
         print("[Cleanup] Success:\n", result.stdout, flush=True)
         
+        # Robust parsing: Scan from end for valid JSON
+        lines = result.stdout.strip().split("\n")
+        output_json = None
         
-        last_line = result.stdout.strip().split("\n")[-1] if result.stdout else ""
-        try:
-            output_json = json.loads(last_line)
-        except json.JSONDecodeError:
+        for line in reversed(lines):
+            try:
+                data = json.loads(line)
+                if isinstance(data, dict) and "status" in data:
+                    output_json = data
+                    break
+            except json.JSONDecodeError:
+                continue
+                
+        if output_json is None:
             output_json = {"status": "success", "output": result.stdout}
         
         return output_json
